@@ -14,24 +14,37 @@ data_path = os.path.join(
     'data'
 )
 
-ne_10m_admin_1_states_provinces_lakes_filename = os.path.join(
+states_filename = os.path.join(
+    data_path,
+    'Boundary_datasets',
+    'ne_10m_admin_0_countries_lakes.shp'
+)
+
+provinces_filename = os.path.join(
     data_path,
     'Boundary_datasets',
     'ne_10m_admin_1_states_provinces_lakes.shp'
 )
 
-ax = plt.axes(projection=ccrs.UTM(37, southern_hemisphere=True))
-x0 = 29.34
-x1 = 43.29
-y0 = -0.99
-y1 = -11.75
-ax.set_extent([x0, x1, y0, y1], crs=ccrs.PlateCarree())
+proj = ccrs.PlateCarree()
+ax = plt.axes(projection=proj)
+x0 = 28.6
+x1 = 41.4
+y0 = -0.2
+y1 = -12.2
+ax.set_extent([x0, x1, y0, y1], crs=proj)
 
-ax.background_patch.set_visible(False)
-ax.outline_patch.set_visible(False)
+for record in shpreader.Reader(states_filename).records():
+    country_code = record.attributes["ISO_A2"]
+    if country_code in ("TZ", "BI", "RW", "CD", "UG", "KE", "ZM", "MW", "MZ", "SO"):
+        geom = record.geometry
+        ax.add_geometries([geom], crs=proj, edgecolor='black', facecolor='#f4f4f4')
 
-for geom in shpreader.Reader(ne_10m_admin_1_states_provinces_lakes_filename).geometries():
-    ax.add_geometries([geom], crs=ccrs.PlateCarree(), edgecolor='black', facecolor='#888888')
+for record in shpreader.Reader(provinces_filename).records():
+    country_code = record.attributes["iso_a2"]
+    if country_code == "TZ":
+        geom = record.geometry
+        ax.add_geometries([geom], crs=proj, edgecolor='black', facecolor='#d7d7d7')
 
 output_filename = os.path.join(
     base_path,
