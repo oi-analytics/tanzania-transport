@@ -1,0 +1,11 @@
+# Data
+data
+
+# Outputs
+figures/*.png
+
+# Text editor
+.vscode
+
+# Python
+*.pyc
