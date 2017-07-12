@@ -7,3 +7,20 @@ Extract the contents of `Assembled_Tanzania_data.7z` to a directory named
 `./data` adjacent to this README.
 
 Run `make all` to generate outputs.
+
+## Python requirements
+
+Recommended option is to use a [miniconda](https://conda.io/miniconda.html)
+environment to work in for this project, relying on conda to handle some of the
+trickier library dependencies.
+
+```bash
+# Create a conda environment for the project
+conda create --name tanzania python=3.6
+activate tanzania
+
+# Install cartopy and packaged dependencies
+conda install -c conda-forge cartopy
+# Install remaining packages
+pip install -r requirements.txt
+```

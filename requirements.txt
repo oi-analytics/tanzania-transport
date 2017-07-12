@@ -1,0 +1,6 @@
+# List the project's python package requirements here
+numpy
+matplotlib
+pandas
+seaborn
+cartopy
