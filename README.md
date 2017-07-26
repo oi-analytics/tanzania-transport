@@ -22,6 +22,8 @@ activate tanzania
 
 # Install cartopy and packaged dependencies
 conda install -c conda-forge cartopy
+# Install gdal and library dependencies
+conda install gdal
 # Install remaining packages
 pip install -r requirements.txt
 ```
