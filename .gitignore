@@ -9,3 +9,6 @@ figures/*.png
 
 # Python
 *.pyc
+
+# Temp
+*~
