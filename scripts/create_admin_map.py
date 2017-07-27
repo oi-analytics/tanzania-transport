@@ -1,5 +1,6 @@
 """Generate administrative map of Tanzania's regions and neighbouring countries
 """
+# pylint: disable=C0103
 import os
 
 import cartopy.crs as ccrs

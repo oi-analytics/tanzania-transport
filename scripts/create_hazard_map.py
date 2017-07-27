@@ -1,5 +1,6 @@
 """Generate maps of flood hazards
 """
+# pylint: disable=C0103
 import os
 
 from osgeo import gdal
