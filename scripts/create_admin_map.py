@@ -32,34 +32,85 @@ provinces_filename = os.path.join(
 plt.figure(figsize=(10, 10), dpi=150)
 
 proj = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.95], projection=proj)
+ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj)
 x0 = 28.6
 x1 = 41.4
-y0 = -0.8
+y0 = -0.1
 y1 = -13.2
 ax.set_extent([x0, x1, y0, y1], crs=proj)
 
-# Neighbours, for region map
+# Neighbours
 for record in shpreader.Reader(states_filename).records():
-    country_code = record.attributes["ISO_A2"]
-    if country_code in ("BI", "RW", "CD", "UG", "KE", "ZM", "MW", "MZ", "SO"):
+    country_code = record.attributes['ISO_A2']
+    if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
         geom = record.geometry
         ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
 
+# Neighbour labels
+neighbours = [
+    {
+        'country': 'Kenya',
+        'cx': 36.9,
+        'cy': -2.1
+    },
+    {
+        'country': 'Uganda',
+        'cx': 29.9,
+        'cy': -0.8
+    },
+    {
+        'country': 'Rwanda',
+        'cx': 29.6,
+        'cy': -1.9
+    },
+    {
+        'country': 'Burundi',
+        'cx': 29.6,
+        'cy': -3.4
+    },
+    {
+        'country': 'DRC',
+        'cx': 28.7,
+        'cy': -5.9
+    },
+    {
+        'country': 'Zambia',
+        'cx': 32.1,
+        'cy': -9.9
+    },
+    {
+        'country': 'Malawi',
+        'cx': 33.7,
+        'cy': -11.3
+    },
+    {
+        'country': 'Mozambique',
+        'cx': 37.1,
+        'cy': -12.3
+    }
+]
+for neighbour in neighbours:
+    plt.text(
+        neighbour['cx'],
+        neighbour['cy'],
+        neighbour['country'].upper(),
+        horizontalalignment='left',
+        transform=proj)
+
 # Regions
 for record in shpreader.Reader(provinces_filename).records():
-    country_code = record.attributes["iso_a2"]
-    if country_code == "TZ":
+    country_code = record.attributes['iso_a2']
+    if country_code == 'TZ':
         geom = record.geometry
         ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#d7d7d7')
 
         centroid = geom.centroid
         cx = geom.centroid.x
         cy = geom.centroid.y
-        name = record.attributes["name"]
-        if name == "Zanzibar South and Central":
+        name = record.attributes['name']
+        if name == 'Zanzibar South and Central':
             cy -= 0.18
-        if name == "Dar-Es-Salaam":
+        if name == 'Dar-Es-Salaam':
             ha = 'left'
         else:
             ha = 'center'
@@ -71,10 +122,10 @@ for record in shpreader.Reader(provinces_filename).records():
             horizontalalignment=ha,
             transform=proj)
 
-plt.title("Neighbouring Countries and Regions of Tanzania")
+plt.title('Neighbouring Countries and Regions of Tanzania')
 
-ax = plt.axes([0, 0, 0.3, 0.4], projection=proj)
-x0 = 16
+ax = plt.axes([0.0375, 0.025, 0.25, 0.25], projection=proj)
+x0 = 8
 x1 = 52
 y0 = 10
 y1 = -37
@@ -82,27 +133,19 @@ ax.set_extent([x0, x1, y0, y1], crs=proj)
 
 # Africa, for neighbours map
 for record in shpreader.Reader(states_filename).records():
-    if record.attributes["CONTINENT"] == "Africa":
+    if record.attributes['CONTINENT'] == 'Africa':
         geom = record.geometry
-        country_code = record.attributes["ISO_A2"]
-        if country_code == "TZ":
-            ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='none')
-        elif country_code in ("TZ", "BI", "RW", "CD", "UG", "KE", "ZM", "MW", "MZ", "SO"):
-            ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
+        country_code = record.attributes['ISO_A2']
+        if country_code == 'TZ':
+            ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#d7d7d7')
+            # plt.text(
+            #     geom.centroid.x,
+            #     geom.centroid.y,
+            #     'Tanzania',
+            #     horizontalalignment='left',
+            #     transform=proj)
         else:
             ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
-
-        if country_code in ("TZ", "BI", "RW", "CD", "UG", "KE", "ZM", "MW", "MZ", "SO"):
-            centroid = geom.centroid
-            name = record.attributes["NAME"]
-            if country_code == "CD":
-                name = "DRC"
-            plt.text(
-                centroid.x,
-                centroid.y,
-                name,
-                horizontalalignment='center',
-                transform=proj)
 
 output_filename = os.path.join(
     base_path,
