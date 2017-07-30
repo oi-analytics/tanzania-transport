@@ -30,7 +30,7 @@ provinces_filename = os.path.join(
     'ne_10m_admin_1_states_provinces_lakes.shp'
 )
 
-plt.figure(figsize=(10, 10), dpi=150)
+plt.figure(figsize=(6, 6), dpi=150)
 
 proj = ccrs.PlateCarree()
 ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj)
@@ -61,12 +61,12 @@ neighbours = [
     },
     {
         'country': 'Rwanda',
-        'cx': 29.6,
+        'cx': 29.2,
         'cy': -1.9
     },
     {
         'country': 'Burundi',
-        'cx': 29.6,
+        'cx': 29.2,
         'cy': -3.4
     },
     {
@@ -77,12 +77,12 @@ neighbours = [
     {
         'country': 'Zambia',
         'cx': 32.1,
-        'cy': -9.9
+        'cy': -10.5
     },
     {
         'country': 'Malawi',
-        'cx': 33.7,
-        'cy': -11.3
+        'cx': 33.5,
+        'cy': -11.7
     },
     {
         'country': 'Mozambique',
@@ -98,6 +98,17 @@ for neighbour in neighbours:
         horizontalalignment='left',
         transform=proj)
 
+nudge_regions = {
+    'Dar-Es-Salaam': (-0.35, 0),
+    'Kagera': (0.2, 0),
+    'Kaskazini-Pemba': (0, 0.2),
+    'Kaskazini-Unguja': (0, 0.1),
+    'Kusini-Pemba': (0, -0.2),
+    'Manyara': (0.1, 0.1),
+    'Pwani': (0.1, -0.2),
+    'Zanzibar South and Central': (-0.3, -0.25),
+}
+
 # Regions
 for record in shpreader.Reader(provinces_filename).records():
     country_code = record.attributes['iso_a2']
@@ -109,8 +120,12 @@ for record in shpreader.Reader(provinces_filename).records():
         cx = geom.centroid.x
         cy = geom.centroid.y
         name = record.attributes['name']
-        if name == 'Zanzibar South and Central':
-            cy -= 0.18
+
+        if name in nudge_regions:
+            dx, dy = nudge_regions[name]
+            cx += dx
+            cy += dy
+
         if name == 'Dar-Es-Salaam':
             ha = 'left'
         else:
