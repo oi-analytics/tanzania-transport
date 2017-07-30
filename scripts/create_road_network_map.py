@@ -21,7 +21,7 @@ major_road_filename = os.path.join(data_path, 'Road_data', 'TZ_TransNet_Roads.sh
 regional_road_filename = os.path.join(data_path, 'Road_data', 'PMO_Tanroads_3857.shp')
 
 # Create figure
-plt.figure(figsize=(10, 10), dpi=150)
+plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
 proj_3857 = ccrs.epsg(3857)
