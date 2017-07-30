@@ -42,7 +42,7 @@ plane_icon_filename = os.path.join(resource_path, 'plane.png')
 train_icon_filename = os.path.join(resource_path, 'train.png')
 
 # Create figure
-plt.figure(figsize=(10, 10), dpi=150)
+plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
 proj_3857 = ccrs.epsg(3857)
