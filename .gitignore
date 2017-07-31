@@ -3,6 +3,7 @@ data
 
 # Outputs
 figures/*.png
+outputs/*.csv
 
 # Text editor
 .vscode
