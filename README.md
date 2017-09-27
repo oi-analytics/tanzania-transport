@@ -7,7 +7,9 @@ Extract the contents of `Assembled_Tanzania_data.7z` to a directory named
 `./data` adjacent to this README. (On Windows, right click > 7-Zip > Extract
 Here, then rename to `data`.)
 
-Run `make all` to generate outputs.
+Run `make all` to generate outputs. Or without make (or if Makefile is
+incomplete), run each script in `./scripts`, e.g.
+`python scripts/calculate_rail_length.py`
 
 ## Python requirements
 

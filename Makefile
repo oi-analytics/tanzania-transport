@@ -7,4 +7,5 @@ all: unzip
 
 clean:
 	rm figures/*
+	rm outputs/*
 	# clean: make complete
