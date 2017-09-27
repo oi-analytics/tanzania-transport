@@ -1,5 +1,9 @@
 # Data
 data
+clean
+
+# Reports, presentations
+reports
 
 # Outputs
 figures/*.png
