@@ -3,6 +3,8 @@
 # pylint: disable=C0103
 import os
 
+from utils import plot_pop, plot_countries, plot_regions
+
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.patches as mpatches
@@ -32,18 +34,10 @@ y0 = 0.5
 y1 = -12.5
 ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
-# Africa, for Tanzania and neighbours
-for record in shpreader.Reader(states_filename).records():
-    if record.attributes['CONTINENT'] != 'Africa':
-        continue
-
-    geom = record.geometry
-    ax.add_geometries(
-        [geom],
-        crs=proj_lat_lon,
-        edgecolor='white',
-        facecolor='#efefef',
-        zorder=1)
+# Background
+plot_countries(ax, data_path)
+plot_pop(plt, ax, data_path)
+plot_regions(ax, data_path)
 
 # Regional roads
 for record in shpreader.Reader(regional_road_filename).records():
@@ -52,6 +46,7 @@ for record in shpreader.Reader(regional_road_filename).records():
         [geom],
         crs=proj_3857,
         edgecolor='#33a02c',
+        linewidth=3,
         facecolor='none',
         zorder=2)
 
@@ -64,9 +59,9 @@ for record in shpreader.Reader(major_road_filename).records():
         ax.add_geometries(
             [outline],
             crs=proj_3857,
-            linewidth=4,
+            linewidth=3,
             edgecolor='#1f78b4',
-            facecolor='#1f78b4',
+            facecolor='none',
             zorder=3)
 
 # Legend
