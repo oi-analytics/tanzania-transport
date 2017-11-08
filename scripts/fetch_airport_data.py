@@ -35,6 +35,24 @@ HEADER = (
     'keywords',
 )
 
+GPS_CODES = (
+    'HTDA', #x Dar
+    'HTKJ', #x Kilimanjaro
+    'HTMB', #x Mbeya
+    'HTTB', #x Tabora
+    'HTAR', #x Arusha
+    'HTMW', #x Mwanza
+    'HTBU', #x Bukoba
+    'HTDO', #x Dodoma
+    'HTZA', #x Zanazibar
+    'HTMT', #x Mtwara
+    'HTGW', #x Songwe
+    'HTKA', #x Kigoma
+    'HTLM', #x Lake Manyara
+    'HTTG', #x Tanga
+    'HTMA', #x Mafia
+)
+
 R = requests.get(DATA_URL)
 DATA = R.text.split("\n")
 
@@ -43,6 +61,5 @@ with open(OUTPUT_FILE, 'w', newline="") as output_fh:
     WRITER = csv.DictWriter(output_fh, fieldnames=HEADER)
     WRITER.writeheader()
     for line in READER:
-        if line['iso_country'] == COUNTRY_CODE and \
-           line['scheduled_service'] == 'yes':
+        if line['iso_country'] == COUNTRY_CODE and line['gps_code'] in GPS_CODES:
             WRITER.writerow(line)
