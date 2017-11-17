@@ -6,8 +6,8 @@ clean
 reports
 
 # Outputs
-figures/*.png
-outputs/*.csv
+figures/*
+outputs/*
 
 # Text editor
 .vscode

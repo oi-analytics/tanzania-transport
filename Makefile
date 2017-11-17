@@ -1,8 +1,5 @@
-unzip:
-	cd ./data/Boundary_datasets && unzip "*.zip"
-
-.PHONY: all clean unzip
-all: unzip
+.PHONY: all clean
+all:
 	# all: make complete
 
 clean:
