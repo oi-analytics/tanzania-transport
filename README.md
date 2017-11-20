@@ -25,7 +25,13 @@ activate tanzania
 # Install cartopy and packaged dependencies
 conda install -c conda-forge cartopy
 # Install gdal and library dependencies
-conda install gdal
+conda install gdal rtree fiona shapely
 # Install remaining packages
 pip install -r requirements.txt
 ```
+
+## Other requirements
+
+`osmium-tool` is handy for handling `.osm.pbf` files. The
+[docs](http://osmcode.org/osmium-tool/manual.html) have installation/build
+instructions.
