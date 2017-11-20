@@ -4,6 +4,7 @@ clean
 
 # Reports, presentations
 reports
+docs
 
 # Outputs
 figures/*
