@@ -24,113 +24,149 @@ NODES_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-nodes-processed.geojs
 WAYS_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-ways-processed.geojson')
 
 
-# Read nodes
-OSM_NODES = {}
-OSM_NODES_INDEX = index.Index()
 
-with fiona.open(NODES_PATH) as fh:
-    for i, record in enumerate(fh):
-        if record['properties']['railway'] in ('subway_entrance', 'yes', 'buffer_stop'):
-            continue
-        geom = shapely.geometry.shape(record['geometry'])
-        record['geom'] = geom
-        OSM_NODES[i] = record
-        OSM_NODES_INDEX.insert(i, geom.bounds)
-print("Nodes read", len(OSM_NODES))
+def main():
+    """Process OSM rail stations and lines
+    """
+    nodes, node_index = read_nodes()
+    print("Nodes read", len(nodes))
 
+    ways, way_index = read_ways()
+    print("Ways read", len(ways))
 
-# Read ways
-OSM_WAYS = {}
-OSM_WAYS_INDEX = index.Index()
+    ways, way_index = split_ways_at_junctions(ways, way_index)
+    print("Ways split at junctions", len(ways))
 
-with fiona.open(WAYS_PATH) as fh:
-    for i, record in enumerate(fh):
-        if record['properties']['service'] in ('siding', 'sid', 'yard', 'crossover'):
-            continue
-        if record['properties']['railway'] in ('residential', 'residdential', 'tram', 'station'):
-            continue
-        geom = shapely.geometry.shape(record['geometry'])
-        record['geom'] = geom
-        OSM_WAYS[i] = record
-        OSM_WAYS_INDEX.insert(i, geom.bounds)
-print("Ways read", len(OSM_WAYS))
+    nodes, node_index = move_nodes_to_ways(nodes, ways, way_index)
+    print("Nodes moved", len(nodes))
+
+    ways, way_index = split_ways_at_stations(nodes, node_index, ways)
+    print("Ways split at stations", len(ways))
+
+    ways, way_index = join_ways(nodes, node_index, ways, way_index)
+    nodes, node_index = create_nodes_at_endpoints(nodes, node_index, ways, way_index)
+    nodes, ways = clean_network(nodes, node_index, ways, way_index)
+    write_all(nodes, NODES_OUTPUT_PATH, ways, WAYS_OUTPUT_PATH)
 
 
-# Split ways at junctions
-MAX_J_SPLIT_WAYS_ID = 0
-OSM_J_SPLIT_WAYS = {}
-OSM_J_SPLIT_WAYS_INDEX = index.Index()
-for i, way in OSM_WAYS.items():
-    check_ids = list(OSM_WAYS_INDEX.intersection(way['geom'].bounds))
-    hits = []
+def read_nodes():
+    """Read all nodes
+    """
+    nodes = {}
+    node_index = index.Index()
+    with fiona.open(NODES_PATH) as source:
+        for i, record in enumerate(source):
+            if record['properties']['railway'] in ('subway_entrance', 'yes', 'buffer_stop'):
+                continue
+            geom = shapely.geometry.shape(record['geometry'])
+            record['geom'] = geom
+            nodes[i] = record
+            node_index.insert(i, geom.bounds)
+    return nodes, node_index
 
-    for other_i in check_ids:
-        if i == other_i:
-            continue
 
-        other_way = OSM_WAYS[other_i]
-        intersection = way['geom'].intersection(other_way['geom'])
+def read_ways():
+    """Read all ways
+    """
+    ways = {}
+    way_index = index.Index()
+    with fiona.open(WAYS_PATH) as source:
+        for i, record in enumerate(source):
+            if record['properties']['service'] in ('siding', 'sid', 'yard', 'crossover'):
+                continue
+            if record['properties']['railway'] in ('residential', 'residdential',
+                                                   'tram', 'station'):
+                continue
+            geom = shapely.geometry.shape(record['geometry'])
+            record['geom'] = geom
+            ways[i] = record
+            way_index.insert(i, geom.bounds)
+    return ways, way_index
 
-        if not intersection:
-            continue
-        elif intersection.geometryType() == 'Point':
-            hits.append(intersection)
-        elif intersection.geometryType() == 'MultiPoint':
-            hits.extend(point for point in intersection)
-        elif intersection.geometryType() == 'GeometryCollection':
-            hits.extend(geom for geom in list(intersection) if geom.geometryType() == 'Point')
+
+def split_ways_at_junctions(ways, way_index):
+    """Split all ways at junction intersections
+    """
+    max_id = 0
+    split_ways = {}
+    split_ways_index = index.Index()
+    for i, way in ways.items():
+        check_ids = list(way_index.intersection(way['geom'].bounds))
+        hits = []
+
+        for other_i in check_ids:
+            if i == other_i:
+                continue
+
+            other_way = ways[other_i]
+            intersection = way['geom'].intersection(other_way['geom'])
+
+            if not intersection:
+                continue
+            elif intersection.geometryType() == 'Point':
+                hits.append(intersection)
+            elif intersection.geometryType() == 'MultiPoint':
+                hits.extend(point for point in intersection)
+            elif intersection.geometryType() == 'GeometryCollection':
+                hits.extend(geom for geom in list(intersection) if geom.geometryType() == 'Point')
+            else:
+                print(way)
+                print(other_way)
+                print(intersection)
+                exit()
+
+        if hits:
+            segments = shapely.ops.split(way['geom'], shapely.geometry.MultiPoint(hits))
         else:
-            print(way)
-            print(other_way)
-            print(intersection)
-            exit()
+            segments = [way['geom']]
 
-    if hits:
-        segments = shapely.ops.split(way['geom'], shapely.geometry.MultiPoint(hits))
-    else:
-        segments = [way['geom']]
+        for segment in list(segments):
+            split_ways[max_id] = {
+                'type': 'Feature',
+                'geom': segment,
+                'geometry': shapely.geometry.mapping(segment),
+                'properties': way['properties']
+            }
+            split_ways_index.insert(max_id, segment.bounds)
+            max_id += 1
+    return split_ways, split_ways_index
 
-    for segment in list(segments):
-        OSM_J_SPLIT_WAYS[MAX_J_SPLIT_WAYS_ID] = {
+
+def move_nodes_to_ways(nodes, ways, way_index):
+    """Move station nodes to intersect with their nearest line
+    """
+    moved_nodes = {}
+    moved_nodes_index = index.Index()
+    for node_i, node in nodes.items():
+        check_ids = list(way_index.nearest(node['geom'].bounds, 1))
+        distances = {}
+        for i in check_ids:
+            way = ways[i]
+            dist = way['geom'].distance(node['geom'])
+            distances[dist] = i
+
+        min_dist = min(distances.keys())
+        way_i = distances[min_dist]
+        way = ways[way_i]
+
+        snap = way['geom'].interpolate(way['geom'].project(node['geom']))
+
+        moved_nodes[node_i] = {
             'type': 'Feature',
-            'geom': segment,
-            'geometry': shapely.geometry.mapping(segment),
-            'properties': way['properties']
+            'geom': snap,
+            'geometry': shapely.geometry.mapping(snap),
+            'properties': node['properties']
         }
-        OSM_J_SPLIT_WAYS_INDEX.insert(MAX_J_SPLIT_WAYS_ID, segment.bounds)
-        MAX_J_SPLIT_WAYS_ID += 1
-
-print("Ways split at junctions", len(OSM_J_SPLIT_WAYS))
-
-
-# Move stations to ways
-OSM_W_NODES = {}
-OSM_W_NODES_INDEX = index.Index()
-for node_i, node in OSM_NODES.items():
-    check_ids = list(OSM_J_SPLIT_WAYS_INDEX.nearest(node['geom'].bounds, 1))
-    distances = {}
-    for i in check_ids:
-        way = OSM_J_SPLIT_WAYS[i]
-        dist = way['geom'].distance(node['geom'])
-        distances[dist] = i
-
-    min_dist = min(distances.keys())
-    way_i = distances[min_dist]
-    way = OSM_J_SPLIT_WAYS[way_i]
-
-    snap = way['geom'].interpolate(way['geom'].project(node['geom']))
-
-    OSM_W_NODES[node_i] = {
-        'type': 'Feature',
-        'geom': snap,
-        'geometry': shapely.geometry.mapping(snap),
-        'properties': node['properties']
-    }
-    OSM_W_NODES_INDEX.insert(node_i, snap.bounds)
-print("Nodes moved", len(OSM_W_NODES))
+        moved_nodes_index.insert(node_i, snap.bounds)
+    return moved_nodes, moved_nodes_index
 
 
 def split_line_with_point(line, point):
+    """Split a line using a point
+
+    - code directly similar to shapely.ops.split, with checks removed so that
+    line must be split even if point doesn't intersect.
+    """
     distance_on_line = line.project(point)
     coords = list(line.coords)
 
@@ -150,112 +186,154 @@ def split_line_with_point(line, point):
             ls1_coords.append(cp.coords[0])
             ls2_coords = [cp.coords[0]]
             ls2_coords.extend(coords[j:])
-            return [shapely.geometry.LineString(ls1_coords), shapely.geometry.LineString(ls2_coords)]
+            return [
+                shapely.geometry.LineString(ls1_coords),
+                shapely.geometry.LineString(ls2_coords)
+            ]
 
 
-# Split ways at stations
-MAX_S_SPLIT_WAYS_ID = 0
-OSM_S_SPLIT_WAYS = {}
-OSM_S_SPLIT_WAYS_INDEX = index.Index()
-for i, way in OSM_J_SPLIT_WAYS.items():
-    check_ids = list(OSM_W_NODES_INDEX.intersection(way['geom'].bounds))
-    hits = []
+def split_ways_at_stations(nodes, node_index, ways):
+    """Split all ways at station nodes
+    """
+    max_id = 0
+    split_ways = {}
+    split_ways_index = index.Index()
+    for i, way in ways.items():
+        check_ids = list(node_index.intersection(way['geom'].bounds))
+        hits = []
 
-    for node_i in check_ids:
-        node = OSM_W_NODES[node_i]
-        intersection = way['geom'].intersection(node['geom'])
+        for node_i in check_ids:
+            node = nodes[node_i]
+            intersection = way['geom'].intersection(node['geom'])
 
-        if not intersection:
-            intersection = way['geom'].intersection(node['geom'].buffer(0.0000000001))
+            if not intersection:
+                intersection = way['geom'].intersection(node['geom'].buffer(0.0000000001))
 
-        if not intersection:
-            continue
-        elif intersection.geometryType() == 'Point':
-            hits.append(intersection)
-        elif intersection.geometryType() == 'MultiPoint':
-            hits.extend(point for point in intersection)
-        elif intersection.geometryType() == 'LineString':
-            start_point = shapely.geometry.Point(intersection.coords[0])
-            hits.append(start_point)
-        elif intersection.geometryType() == 'GeometryCollection':
-            hits.extend(geom for geom in list(intersection) if geom.geometryType() == 'Point')
-        else:
-            print(way)
-            print(node)
-            print(intersection)
-            exit()
+            if not intersection:
+                continue
+            elif intersection.geometryType() == 'Point':
+                hits.append(intersection)
+            elif intersection.geometryType() == 'MultiPoint':
+                hits.extend(point for point in intersection)
+            elif intersection.geometryType() == 'LineString':
+                start_point = shapely.geometry.Point(intersection.coords[0])
+                hits.append(start_point)
+            elif intersection.geometryType() == 'GeometryCollection':
+                hits.extend(geom for geom in list(intersection) if geom.geometryType() == 'Point')
+            else:
+                print("Unhandled intersection type:")
+                print(way)
+                print(node)
+                print(intersection)
+                exit()
 
-    if hits:
-        # segments = shapely.ops.split(way['geom'], shapely.geometry.MultiPoint(hits))
-        line = way['geom']
-        segments = [line]
-        for hit in hits:
-            new_segments = []
-            for segment in filter(lambda x: not x.is_empty, segments):
-                # add the newly split 2 lines or the same line if not split
-                new_segments.extend(split_line_with_point(segment, hit))
-                segments = new_segments
-    else:
         segments = [way['geom']]
+        if hits:
+            # segments = shapely.ops.split(way['geom'], shapely.geometry.MultiPoint(hits))
+            for hit in hits:
+                new_segments = []
+                for segment in filter(lambda x: not x.is_empty, segments):
+                    # add the newly split 2 lines or the same line if not split
+                    new_segments.extend(split_line_with_point(segment, hit))
+                    segments = new_segments
 
-    for segment in list(segments):
-        OSM_S_SPLIT_WAYS[MAX_S_SPLIT_WAYS_ID] = {
-            'type': 'Feature',
-            'geom': segment,
-            'geometry': shapely.geometry.mapping(segment),
-            'properties': way['properties']
-        }
-        OSM_S_SPLIT_WAYS_INDEX.insert(MAX_S_SPLIT_WAYS_ID, segment.bounds)
-        MAX_S_SPLIT_WAYS_ID += 1
-
-print("Ways split at stations", len(OSM_S_SPLIT_WAYS))
-
-
-
-# Join ways if split at non-junction, non-station
-
-
-
-# Create nodes at all end-points (junction, terminus)
-
+        for segment in list(segments):
+            split_ways[max_id] = {
+                'type': 'Feature',
+                'geom': segment,
+                'geometry': shapely.geometry.mapping(segment),
+                'properties': way['properties']
+            }
+            split_ways_index.insert(max_id, segment.bounds)
+            max_id += 1
+    return split_ways, split_ways_index
 
 
-# Write all
-if os.path.exists(WAYS_OUTPUT_PATH):
-    os.remove(WAYS_OUTPUT_PATH)
+def line_endpoints(line):
+    start = shapely.geometry.Point(line.coords[0])
+    end = shapely.geometry.Point(line.coords[-1])
+    return start, end
 
-with fiona.open(WAYS_OUTPUT_PATH, 'w',
-            driver="GeoJSON",
-            schema={
-                'geometry': 'LineString',
-                'properties': {
-                    'name': 'str',
-                    'osm_id': 'str'
-                }
-            },
-            crs=from_epsg(4326)) as sink:
-    for feature in OSM_S_SPLIT_WAYS.values():
-        feature['properties'] = {
-            'name': feature['properties']['name'],
-            'osm_id': feature['properties']['osm_id']
-        }
-        sink.write(feature)
 
-if os.path.exists(NODES_OUTPUT_PATH):
-    os.remove(NODES_OUTPUT_PATH)
-with fiona.open(NODES_OUTPUT_PATH, 'w',
-            driver="GeoJSON",
-            schema={
-                'geometry': 'Point',
-                'properties': {
-                    'name': 'str',
-                    'osm_id': 'str'
-                }
-            },
-            crs=from_epsg(4326)) as sink:
-    for feature in OSM_W_NODES.values():
-        feature['properties'] = {
-            'name': feature['properties']['name'],
-            'osm_id': feature['properties']['osm_id']
-        }
-        sink.write(feature)
+def other_end(line, point):
+    start, end = line_endpoints(line)
+    if start.equals(point):
+        return end
+    if end.equals(point):
+        return start
+
+
+def join_ways(nodes, node_index, ways, way_index):
+    """Join ways if split at non-junction, non-station
+    """
+    return ways, way_index
+
+    max_id = 0
+    joined_ways = {}
+    joined_way_index = index.Index()
+    considered = set()
+    for way_i, way in ways.items():
+        if way_i in considered:
+            continue
+        start, end = line_endpoints(way['geom'])
+    # return joined_ways, joined_ways_index
+
+
+def create_nodes_at_endpoints(nodes, node_index, ways, way_index):
+    """Ensure that network is topologically complete with nodes at endpoints
+    """
+    return nodes, node_index
+
+
+def clean_network(nodes, node_index, ways, way_index):
+    """Clean network properties
+    - map node names to canonical station names
+    - add endpoint references to edges
+    """
+    return nodes, ways
+
+
+def write_all(nodes, node_path, ways, way_path):
+    """Write all data to output files
+    """
+    if os.path.exists(way_path):
+        os.remove(way_path)
+
+    with fiona.open(way_path, 'w',
+                    driver="GeoJSON",
+                    schema={
+                        'geometry': 'LineString',
+                        'properties': {
+                            'name': 'str',
+                            'osm_id': 'str'
+                        }
+                    },
+                    crs=from_epsg(4326)) as sink:
+        for feature in ways.values():
+            feature['properties'] = {
+                'name': feature['properties']['name'],
+                'osm_id': feature['properties']['osm_id']
+            }
+            sink.write(feature)
+
+    if os.path.exists(node_path):
+        os.remove(node_path)
+    with fiona.open(node_path, 'w',
+                    driver="GeoJSON",
+                    schema={
+                        'geometry': 'Point',
+                        'properties': {
+                            'name': 'str',
+                            'osm_id': 'str'
+                        }
+                    },
+                    crs=from_epsg(4326)) as sink:
+        for feature in nodes.values():
+            feature['properties'] = {
+                'name': feature['properties']['name'],
+                'osm_id': feature['properties']['osm_id']
+            }
+            sink.write(feature)
+
+if __name__ == '__main__':
+    main()
