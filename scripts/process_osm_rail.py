@@ -44,7 +44,11 @@ def main():
     print("Ways split at stations", len(ways))
 
     ways, way_index = join_ways(nodes, node_index, ways, way_index)
+    print("Ways joined except junctions/stations", len(ways))
+
     nodes, node_index = create_nodes_at_endpoints(nodes, node_index, ways, way_index)
+    print("Nodes after adding endpoints", len(nodes))
+
     nodes, ways = clean_network(nodes, node_index, ways, way_index)
     write_all(nodes, NODES_OUTPUT_PATH, ways, WAYS_OUTPUT_PATH)
 
@@ -79,6 +83,7 @@ def read_ways():
                 continue
             geom = shapely.geometry.shape(record['geometry'])
             record['geom'] = geom
+            record['id'] = i
             ways[i] = record
             way_index.insert(i, geom.bounds)
     return ways, way_index
@@ -125,7 +130,8 @@ def split_ways_at_junctions(ways, way_index):
                 'type': 'Feature',
                 'geom': segment,
                 'geometry': shapely.geometry.mapping(segment),
-                'properties': way['properties']
+                'properties': way['properties'],
+                'id': max_id
             }
             split_ways_index.insert(max_id, segment.bounds)
             max_id += 1
@@ -155,7 +161,8 @@ def move_nodes_to_ways(nodes, ways, way_index):
             'type': 'Feature',
             'geom': snap,
             'geometry': shapely.geometry.mapping(snap),
-            'properties': node['properties']
+            'properties': node['properties'],
+            'id': node_i
         }
         moved_nodes_index.insert(node_i, snap.bounds)
     return moved_nodes, moved_nodes_index
@@ -242,7 +249,8 @@ def split_ways_at_stations(nodes, node_index, ways):
                 'type': 'Feature',
                 'geom': segment,
                 'geometry': shapely.geometry.mapping(segment),
-                'properties': way['properties']
+                'properties': way['properties'],
+                'id': max_id
             }
             split_ways_index.insert(max_id, segment.bounds)
             max_id += 1
@@ -263,25 +271,197 @@ def other_end(line, point):
         return start
 
 
+def find_ways_at(point, ways, way_index):
+    buffered = point.buffer(0.0000001)
+    buffered_bounds = buffered.bounds
+    check_ids = list(way_index.intersection(buffered_bounds))
+    found = []
+    for way_id in check_ids:
+        way = ways[way_id]
+        if way['geom'].intersection(buffered):
+            found.append(way)
+    return found
+
+
+def has_station(point, nodes, node_index):
+    buffered = point.buffer(0.0000001)
+    buffered_bounds = buffered.bounds
+    check_ids = list(node_index.intersection(buffered_bounds))
+    for node_id in check_ids:
+        node = nodes[node_id]
+        if node['geom'].intersection(buffered):
+            return node['properties']['name'] != 'junction'
+    return False
+
+
+def has_node(point, nodes, node_index):
+    buffered = point.buffer(0.0000001)
+    buffered_bounds = buffered.bounds
+    check_ids = list(node_index.intersection(buffered_bounds))
+    for node_id in check_ids:
+        node = nodes[node_id]
+        if node['geom'].intersection(buffered):
+            return True
+    return False
+
+
+def almost_equal_points(a, b):
+    ab = a.buffer(0.0000001)
+    bb = b.buffer(0.0000001)
+    return ab.intersection(bb)
+
+
 def join_ways(nodes, node_index, ways, way_index):
     """Join ways if split at non-junction, non-station
     """
-    return ways, way_index
-
     max_id = 0
     joined_ways = {}
-    joined_way_index = index.Index()
+    joined_ways_index = index.Index()
     considered = set()
+
     for way_i, way in ways.items():
-        if way_i in considered:
+        assert way_i == way['id']
+        if way['id'] in considered:
             continue
-        start, end = line_endpoints(way['geom'])
-    # return joined_ways, joined_ways_index
+        else:
+            considered.add(way['id'])
+
+        way_start, way_end = line_endpoints(way['geom'])
+        segments = []
+
+        # - while more segments
+        # - consider next station/junction
+        next_point = way_start
+        next_way = way
+        while True:
+            if has_station(next_point, nodes, node_index):
+                break
+
+            intersecting_ways = find_ways_at(next_point, ways, way_index)
+            if len(intersecting_ways) != 2:
+                # if junction or endpoint, bail
+                break
+
+            a = intersecting_ways[0]
+            b = intersecting_ways[1]
+            if a['id'] == next_way['id']:
+                next_way = b
+            else:
+                assert b['id'] == next_way['id']
+                next_way = a
+
+            start, end = line_endpoints(next_way['geom'])
+            if almost_equal_points(start, next_point):
+                next_point = end
+            else:
+                assert almost_equal_points(end, next_point)
+                next_point = start
+
+            segments.append(next_way)
+            considered.add(next_way['id'])
+
+
+        # - while more segments
+        # - consider next station/junction
+        next_point = way_end
+        next_way = way
+        while True:
+            if has_station(next_point, nodes, node_index):
+                break
+
+            intersecting_ways = find_ways_at(next_point, ways, way_index)
+            if len(intersecting_ways) != 2:
+                # if junction or endpoint, bail
+                break
+            a = intersecting_ways[0]
+            b = intersecting_ways[1]
+            if a['id'] == next_way['id']:
+                next_way = b
+            else:
+                assert b['id'] == next_way['id']
+                next_way = a
+
+            start, end = line_endpoints(next_way['geom'])
+            if almost_equal_points(start, next_point):
+                next_point = end
+            else:
+                assert almost_equal_points(end, next_point)
+                next_point = start
+
+            segments.append(next_way)
+            considered.add(next_way['id'])
+
+        to_merge = [segment['geom'] for segment in segments]
+        to_merge.append(way['geom'])
+        geom = shapely.ops.unary_union(to_merge)
+
+        if geom.geometryType() == 'MultiLineString':
+            geom = shapely.ops.linemerge(geom)
+
+        if geom.geometryType() == 'MultiLineString':
+            geom = geom[0]
+            print("Could not merge", way['properties']['osm_id'])
+            # for line in geom:
+            #     joined_ways[max_id] = {
+            #         'feature': 'LineString',
+            #         'properties': {
+            #             'name': '',
+            #             'osm_id': way['properties']['osm_id']
+            #         },
+            #         'geometry': shapely.geometry.mapping(line),
+            #         'geom': line,
+            #         'id': max_id
+            #     }
+            #     joined_ways_index.insert(max_id, geom.bounds)
+            #     max_id += 1
+
+        joined_ways[max_id] = {
+            'feature': 'LineString',
+            'properties': {
+                'name': '',
+                'osm_id': way['properties']['osm_id']
+            },
+            'geometry': shapely.geometry.mapping(geom),
+            'geom': geom,
+            'id': max_id
+        }
+        joined_ways_index.insert(max_id, geom.bounds)
+        max_id += 1
+    return joined_ways, joined_ways_index
 
 
 def create_nodes_at_endpoints(nodes, node_index, ways, way_index):
     """Ensure that network is topologically complete with nodes at endpoints
     """
+    max_id = len(nodes) + 1
+    for way in ways.values():
+        start, end = line_endpoints(way['geom'])
+        if not has_node(start, nodes, node_index):
+            nodes[max_id] = {
+                'feature': 'Point',
+                'properties': {
+                    'name': 'junction',
+                    'osm_id': ''
+                },
+                'geometry': shapely.geometry.mapping(start),
+                'geom': start,
+                'id': max_id
+            }
+            node_index.insert(max_id, start.bounds)
+            max_id += 1
+        if not has_node(end, nodes, node_index):
+            nodes[max_id] = {
+                'feature': 'Point',
+                'properties': {
+                    'name': 'junction',
+                    'osm_id': ''
+                },
+                'geometry': shapely.geometry.mapping(end),
+                'geom': end,
+                'id': max_id
+            }
+            node_index.insert(max_id, end.bounds)
+            max_id += 1
     return nodes, node_index
 
 
