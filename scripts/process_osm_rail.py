@@ -4,6 +4,7 @@
 - split ways on junctions and at stations
 - match station names to canonical set
 """
+import csv
 import os
 
 import fiona
@@ -17,8 +18,8 @@ BASE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'Railway_data'
 NODES_PATH = os.path.join(BASE_PATH, 'tanzania-rail-nodes.geojson')
 WAYS_PATH = os.path.join(BASE_PATH, 'tanzania-rail-ways.geojson')
 
-MAJOR_NODES_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_nodes.csv')
-MAJOR_WAYS_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_edges.csv')
+TRANSCRIBED_NODES_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_nodes.csv')  # major/final/transfer stations are matched, minor stations much less
+# TRANSCRIBED_WAYS_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_edges.csv')  # not used because nodes are too mismatched
 
 NODES_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-nodes-processed.geojson')
 WAYS_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-ways-processed.geojson')
@@ -30,6 +31,9 @@ def main():
     """
     nodes, node_index = read_nodes()
     print("Nodes read", len(nodes))
+
+    add_node("Tanga", 39.0826166, -5.0820544, nodes, node_index)
+    add_node("Kidatu", 36.9966853, -7.6903295, nodes, node_index)
 
     ways, way_index = read_ways()
     print("Ways read", len(ways))
@@ -49,7 +53,7 @@ def main():
     nodes, node_index = create_nodes_at_endpoints(nodes, node_index, ways, way_index)
     print("Nodes after adding endpoints", len(nodes))
 
-    nodes, ways = clean_network(nodes, node_index, ways, way_index)
+    nodes, ways = clean_network(nodes, node_index, ways, way_index, TRANSCRIBED_NODES_PATH)
     write_all(nodes, NODES_OUTPUT_PATH, ways, WAYS_OUTPUT_PATH)
 
 
@@ -62,10 +66,31 @@ def read_nodes():
         for i, record in enumerate(source):
             if record['properties']['railway'] in ('subway_entrance', 'yes', 'buffer_stop'):
                 continue
+            if record['properties']['osm_id'] in ('3708848126', '3708848129'):
+                continue
             geom = shapely.geometry.shape(record['geometry'])
             record['geom'] = geom
             nodes[i] = record
             node_index.insert(i, geom.bounds)
+    return nodes, node_index
+
+
+def add_node(name, lon, lat, nodes, node_index):
+    max_id = max(nodes.keys()) + 1
+
+    point = shapely.geometry.Point(lon, lat)
+    node = {
+        'feature': 'Point',
+        'properties': {
+            'name': name,
+            'osm_id': ''
+        },
+        'geometry': shapely.geometry.mapping(point),
+        'geom': point,
+        'id': max_id
+    }
+    nodes[max_id] = node
+    node_index.insert(max_id, point.bounds)
     return nodes, node_index
 
 
@@ -80,6 +105,8 @@ def read_ways():
                 continue
             if record['properties']['railway'] in ('residential', 'residdential',
                                                    'tram', 'station'):
+                continue
+            if record['properties']['osm_id'] in ('221881297', '23859316'):
                 continue
             geom = shapely.geometry.shape(record['geometry'])
             record['geom'] = geom
@@ -301,7 +328,7 @@ def has_node(point, nodes, node_index):
     for node_id in check_ids:
         node = nodes[node_id]
         if node['geom'].intersection(buffered):
-            return True
+            return node
     return False
 
 
@@ -401,19 +428,6 @@ def join_ways(nodes, node_index, ways, way_index):
         if geom.geometryType() == 'MultiLineString':
             geom = geom[0]
             print("Could not merge", way['properties']['osm_id'])
-            # for line in geom:
-            #     joined_ways[max_id] = {
-            #         'feature': 'LineString',
-            #         'properties': {
-            #             'name': '',
-            #             'osm_id': way['properties']['osm_id']
-            #         },
-            #         'geometry': shapely.geometry.mapping(line),
-            #         'geom': line,
-            #         'id': max_id
-            #     }
-            #     joined_ways_index.insert(max_id, geom.bounds)
-            #     max_id += 1
 
         joined_ways[max_id] = {
             'feature': 'LineString',
@@ -433,7 +447,7 @@ def join_ways(nodes, node_index, ways, way_index):
 def create_nodes_at_endpoints(nodes, node_index, ways, way_index):
     """Ensure that network is topologically complete with nodes at endpoints
     """
-    max_id = len(nodes) + 1
+    max_id = max(nodes.keys()) + 1
     for way in ways.values():
         start, end = line_endpoints(way['geom'])
         if not has_node(start, nodes, node_index):
@@ -465,11 +479,39 @@ def create_nodes_at_endpoints(nodes, node_index, ways, way_index):
     return nodes, node_index
 
 
-def clean_network(nodes, node_index, ways, way_index):
+def clean_network(nodes, node_index, ways, way_index, node_match_path):
     """Clean network properties
     - map node names to canonical station names
     - add endpoint references to edges
     """
+    node_name_lookup = {}
+    with open(node_match_path, 'r') as fh:
+        r = csv.DictReader(fh)
+        for line in r:
+            node_name_lookup[line['osm_name']] = line
+
+    for node in nodes.values():
+        node_name = node['properties']['name']
+        node['properties']['id'] = "rail_node_{}".format(node['id'])
+        if node_name in node_name_lookup:
+            details = node_name_lookup[node_name]
+            node['properties']['name'] = details['name']
+            node['properties']['rail_node_type'] = details['type']
+        else:
+            if node_name == 'junction':
+                node['properties']['rail_node_type'] = 'junction'
+                node['properties']['name'] = ''
+            else:
+                node['properties']['rail_node_type'] = 'minor'
+
+    for way in ways.values():
+        start, end = line_endpoints(way['geom'])
+        start_node = has_node(start, nodes, node_index)
+        end_node = has_node(end, nodes, node_index)
+        way['properties']['id'] = "rail_way_{}".format(way['id'])
+        way['properties']['source'] = start_node['properties']['id']
+        way['properties']['target'] = end_node['properties']['id']
+
     return nodes, ways
 
 
@@ -484,14 +526,20 @@ def write_all(nodes, node_path, ways, way_path):
                     schema={
                         'geometry': 'LineString',
                         'properties': {
+                            'id': 'str',
                             'name': 'str',
+                            'source': 'str',
+                            'target': 'str',
                             'osm_id': 'str'
                         }
                     },
                     crs=from_epsg(4326)) as sink:
         for feature in ways.values():
             feature['properties'] = {
+                'id': feature['properties']['id'],
                 'name': feature['properties']['name'],
+                'source': feature['properties']['source'],
+                'target': feature['properties']['target'],
                 'osm_id': feature['properties']['osm_id']
             }
             sink.write(feature)
@@ -503,15 +551,19 @@ def write_all(nodes, node_path, ways, way_path):
                     schema={
                         'geometry': 'Point',
                         'properties': {
+                            'id': 'str',
                             'name': 'str',
-                            'osm_id': 'str'
+                            'osm_id': 'str',
+                            'rail_node_type': 'str'
                         }
                     },
                     crs=from_epsg(4326)) as sink:
         for feature in nodes.values():
             feature['properties'] = {
+                'id': feature['properties']['id'],
                 'name': feature['properties']['name'],
-                'osm_id': feature['properties']['osm_id']
+                'osm_id': feature['properties']['osm_id'],
+                'rail_node_type': feature['properties']['rail_node_type']
             }
             sink.write(feature)
 
