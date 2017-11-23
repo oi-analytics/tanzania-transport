@@ -12,10 +12,9 @@ import matplotlib.pyplot as plt
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
-ferry_path = os.path.join(data_path, 'Port_data')
 
 # TZ_TransNet_FerryTerminals
-ports_filename = os.path.join(ferry_path, 'TZ_ports.csv')
+ports_filename = os.path.join(data_path, 'Infrastructure', 'Ports', 'TZ_ports.csv')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -35,24 +34,30 @@ plot_regions(ax, data_path)
 
 xs = []
 ys = []
-with open(ports_filename, 'r') as fh:
+with open(ports_filename, 'r', encoding="utf-8") as fh:
     r = csv.DictReader(fh)
     for record in r:
         x = float(record['longitude'])
         y = float(record['latitude'])
         xs.append(x)
         ys.append(y)
-        name = record.attributes['name']
-        x -= 0.05
-        if name in ('Mjimwema Terminal', 'Mtwara', 'Chake Chake'):
+        name = record['name']
+        if name in ('Kemondo Bay', 'Uvira', 'Mtwara'):
             y -= 0.35
         else:
             y += 0.05
-        ax.text(x, y, name, transform=proj_lat_lon, zorder=4, ha='right')
+
+        if x < 31:
+            x += 0.05
+            align = 'left'
+        else:
+            x -= 0.05
+            align = 'right'
+        ax.text(x, y, name, transform=proj_lat_lon, zorder=4, ha=align)
 
 ax.scatter(xs, ys, facecolor='#1f78b4', s=5, zorder=3)
 
-plt.title('Major Ferry Terminals and Sea Ports in Tanzania')
+plt.title('Major Ferry Terminals and Sea Ports serving Tanzania')
 output_filename = os.path.join(
     base_path,
     'figures',
