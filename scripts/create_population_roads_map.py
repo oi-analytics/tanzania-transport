@@ -10,23 +10,26 @@ import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
+import shapely.geometry
 
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data', 'Infrastructure')
+data_path = os.path.join(base_path, 'data')
+
+states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries', 'ne_10m_admin_0_countries_lakes.shp')
 
 # WorldPop TZA_popmap15adj_v2b
-population_filename = os.path.join(data_path, 'Population', 'TZA_popmap15adj_v2b_cropped.tif')
+population_filename = os.path.join(data_path, 'Infrastructure', 'Population', 'TZA_popmap15adj_v2b_cropped.tif')
 
 # TZ_TransNet_Roads, clipped to Tanzania
-trunk_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
+trunk_road_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
 # PMO_TanRoads
-regional_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'regional_roads_2017.shp')
+regional_road_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
 # OSM
-local_road_filename = os.path.join(data_path, 'Roads', 'osm_mainroads', 'osm_mainroads.shp')
+# local_road_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'osm_mainroads', 'osm_mainroads.shp')
 
 # Route to highlight
-route_filename = os.path.join(data_path, 'Roads', 'highlight_route_mwanza.shp')
+route_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'highlight_route_mwanza.shp')
 
 
 # Create figure
@@ -34,13 +37,13 @@ plt.figure(figsize=(6, 6), dpi=72)
 
 proj_lat_lon = ccrs.PlateCarree()
 proj_3857 = ccrs.epsg(3857)
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
+ax = plt.axes([0.025, 0, 0.95, 0.95], projection=proj_lat_lon)
 x0 = 32.75
 x1 = 33.2
 y0 = -2.4
 y1 = -2.75
-ax_extent = [x0, x1, y0, y1]
-ax.set_extent(ax_extent, crs=proj_lat_lon)
+zoom_extent = [x0, x1, y0, y1]
+ax.set_extent(zoom_extent, crs=proj_lat_lon)
 
 # Read in raster data
 gdal.UseExceptions()
@@ -79,14 +82,14 @@ im = None
 ds = None
 
 # Local roads
-for record in shpreader.Reader(local_road_filename).records():
-    geom = record.geometry
-    ax.add_geometries(
-        [geom],
-        crs=proj_lat_lon,
-        edgecolor=(1, 1, 1, 0.5),
-        facecolor='none',
-        zorder=2)
+# for record in shpreader.Reader(local_road_filename).records():
+#     geom = record.geometry
+#     ax.add_geometries(
+#         [geom],
+#         crs=proj_lat_lon,
+#         edgecolor=(1, 1, 1, 0.5),
+#         facecolor='none',
+#         zorder=2)
 
 # Regional roads
 for record in shpreader.Reader(regional_road_filename).records():
@@ -101,15 +104,13 @@ for record in shpreader.Reader(regional_road_filename).records():
 # Major roads
 for record in shpreader.Reader(trunk_road_filename).records():
     geom = record.geometry
-    country = record.attributes["Country"]
-    if country == "Tanzania":
-        ax.add_geometries(
-            [geom],
-            crs=proj_lat_lon,
-            linewidth=1,
-            edgecolor='#1f78b4',
-            facecolor='none',
-            zorder=4)
+    ax.add_geometries(
+        [geom],
+        crs=proj_lat_lon,
+        linewidth=1,
+        edgecolor='#1f78b4',
+        facecolor='none',
+        zorder=4)
 
 # Highlight
 for record in shpreader.Reader(route_filename).records():
@@ -123,8 +124,6 @@ for record in shpreader.Reader(route_filename).records():
         facecolor=(1, 0.7, 0.7, 0.4),
         zorder=5)
 
-# ax.text(32.93, -2.56, 'Route to major node', transform=ccrs.Geodetic(), rotation=-12)
-
 # Legend
 legend_handles = [
     mpatches.Patch(color='#1f78b4', label='Major Roads'),
@@ -137,6 +136,30 @@ plt.legend(
     loc='lower left'
 )
 plt.title('Local Roads and Population Density near Mwanza')
+
+
+# Add context
+ax = plt.axes([0.65, 0.25, 0.35, 0.25], projection=proj_lat_lon)
+tz_extent = (28.6, 41.4, -0.1, -13.2)
+ax.set_extent(tz_extent, crs=proj_lat_lon)
+
+# Tanzania
+
+# Neighbours
+for record in shpreader.Reader(states_filename).records():
+    country_code = record.attributes['ISO_A2']
+    if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
+        geom = record.geometry
+        ax.add_geometries([geom], crs=proj_lat_lon, edgecolor='white', facecolor='#efefef')
+    if country_code == 'TZ':
+        geom = record.geometry
+        ax.add_geometries([geom], crs=proj_lat_lon, edgecolor='white', facecolor='#d7d7d7')
+
+# Zoom extent: (37.5, 39.5, -8.25, -6.25)
+x0, x1, y0, y1 = zoom_extent
+box = shapely.geometry.Polygon(((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)))
+ax.add_geometries([box], crs=proj_lat_lon, edgecolor='#000000', facecolor='#d7d7d700')
+
 
 # Save
 output_filename = os.path.join(
