@@ -10,6 +10,11 @@ import numpy as np
 import pandas as pd
 import json
 import matplotlib as mpl
+from shutil import copyfile
+import os
+from shapely.geometry import Point
+import geopandas as gpd
+from rtree import index
 
 #plt.ioff()
 
@@ -104,3 +109,89 @@ def get_shortest_distance(sg,nodes,geom_in):
  
     return min(inb)
 
+def distance_trunk(region,flooded=False):
+
+    '''Set file in and output names'''
+    shape_in = "regions\\"+region+'.shp'
+    raster_out = "calc\\%s-globpop.tif" % region
+    raster_in = 'GLOBPOP\\TZA_popmap15adj_v2c.tif'
+    outCSVName = 'calc\\points_%s_in.csv' % region
+
+    '''Clip to region and convert to points'''
+    os.system('gdalwarp -cutline '+shape_in+' -crop_to_cutline -dstalpha '+raster_in+' '+raster_out)
+    os.system('gdal2xyz.py -skip 3 -csv '+raster_out+' '+ outCSVName)
+
+    '''Load points and convert to geodataframe with coordinates'''    
+    load_points = pd.read_csv(outCSVName,header=None,names=['x','y','pop_dens'],index_col=None)
+    load_points = load_points[load_points['pop_dens'] > 5] 
+ 
+    geometry = [Point(xy) for xy in zip(load_points.x, load_points.y)]
+    load_points = load_points.drop(['x', 'y'], axis=1)
+    crs = {'init': 'epsg:4326'}
+    points_gdp = gpd.GeoDataFrame(load_points, crs=crs, geometry=geometry)
+    del load_points
+
+    ''' Load local road network of the pre-defined region'''
+    if flooded is False:
+        g = nx.read_shp("cleaned_regions\\%s-highway-1.shp" % region)
+    else:
+        g = nx.read_shp("flooded_regions\\%s-highway-flooded.shp" % region)
+        
+    sg =  max(nx.connected_component_subgraphs(g.to_undirected()), key=len)
+
+    nodes = np.array(sg.nodes())
+    print(len(nodes))
+
+    points_gdp['dist_trunk'] = points_gdp['geometry'].apply(lambda x: get_shortest_distance(sg,nodes,x)) #
+    
+    if flooded is False:    
+        points_gdp.to_file(driver = 'ESRI Shapefile', filename= "output\\dist_trunk_%s.shp" % region)      
+    else:
+        points_gdp.to_file(driver = 'ESRI Shapefile', filename= "output\\dist_trunk_%s_flooded.shp" % region)      
+        
+    return points_gdp,nodes
+
+def intersect_flood(region,flood_map):
+
+    roads = gpd.read_file("cleaned_regions\\%s-highway-1.shp" % region)
+    roads['unique_id'] = list(roads.index)
+    flood = gpd.read_file(flood_map)
+
+    idx_edges = index.Index()
+    i = 0
+    for id_,line in roads.iterrows():
+        idx_edges.insert(i, line['geometry'].bounds, line)
+        i += 1
+
+    all_inters = []
+    for id_,fld in flood.iterrows():
+         inb_inter = idx_edges.intersection(fld['geometry'].bounds, objects='raw')    
+         for edge in inb_inter:
+             if edge['geometry'].intersection(fld['geometry']):
+                 all_inters.append(edge)
+
+    flooded_roads = pd.concat(all_inters, axis=1).T
+    non_flooded_roads = gpd.GeoDataFrame(roads[~roads.unique_id.isin(flooded_roads.unique_id.values)],crs=roads.crs,geometry=roads.geometry)
+    non_flooded_roads.to_file("flooded_regions\\%s-highway-flooded.shp" % region)
+
+    return non_flooded_roads
+
+def write_vrt(region):
+
+    vrt_in  = 'calc//xyz.vrt'
+    vrt_out = 'xyz_%s.vrt' % region
+
+    copyfile(vrt_in, vrt_out)
+
+    with open(vrt_out, 'r') as file:
+        # read a list of lines into data
+        data = file.readlines()
+        
+        data[2] = '    <OGRVRTLayer name="xyz_%s"> \n' % region
+        data[3] = '        <SrcDataSource>xyz_%s.csv</SrcDataSource> \n' % region
+        data[4] = '    <SrcLayer>xyz_%s</SrcLayer> \n' % region
+
+    with open(vrt_out, 'w') as file:
+        file.writelines( data )
+        
+    return vrt_out
