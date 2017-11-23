@@ -9,6 +9,7 @@ import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 import numpy as np
+import shapely.geometry
 
 # Input data
 base_path = os.path.join(
@@ -126,7 +127,8 @@ for record in shpreader.Reader(lakes_filename).records():
 
 proj = ccrs.PlateCarree()
 colors = plt.get_cmap('Blues')
-colors.colors[0] = (1, 1, 1, 0)  # set zero values to transparent white
+# colors.colors[0] = (1, 1, 1, 0)  # set zero values to transparent white - works for e.g. viridis colormap
+colors._segmentdata['alpha'][0] = (0, 0, 0)  # set zero values to transparent white - works for LinearSegmentedColorMap
 
 # Create figure
 fig, axes = plt.subplots(
@@ -171,12 +173,32 @@ for (ax_num, ax), (data, lat_lon_extent), details in zip(enumerate(axes.flat), d
 
 # Adjust layout
 ax_list = list(axes.flat)
-plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.04, rect=(0, 0.02, 1, 1))
+plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.04, rect=(0, 0.17, 1, 1))
 
 # Add colorbar
 cbar = plt.colorbar(im, ax=ax_list, fraction=0.05, pad=0.01, drawedges=False, orientation='horizontal')
 cbar.outline.set_color("none")
 cbar.ax.set_xlabel('Flood depth (m)')
+
+# Add context
+ax = plt.axes([0.025, 0.005, 0.3, 0.18], projection=proj)
+tz_extent = (28.6, 41.4, -0.1, -13.2)
+ax.set_extent(tz_extent, crs=proj)
+
+# Tanzania
+ax.add_geometries([tz_geom], crs=proj, edgecolor='white', facecolor='#d7d7d7')
+
+# Neighbours
+for record in shpreader.Reader(states_filename).records():
+    country_code = record.attributes['ISO_A2']
+    if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
+        geom = record.geometry
+        ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
+
+# Zoom extent: (37.5, 39.5, -8.25, -6.25)
+x0, x1, y0, y1 = zoom_extent
+box = shapely.geometry.Polygon(((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)))
+ax.add_geometries([box], crs=proj, edgecolor='#000000', facecolor='#d7d7d700')
 
 # Save
 output_filename = os.path.join(
