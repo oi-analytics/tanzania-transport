@@ -6,3 +6,5 @@ seaborn
 cartopy
 gdal
 fiona
+networkx 
+json
