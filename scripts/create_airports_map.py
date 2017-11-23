@@ -49,7 +49,7 @@ with open(airport_filename, 'r') as airports_file:
         if name in [
             'Julius Nyerere International Airport',
             'Kilimanjaro International Airport',
-            'Abeid Karume International Airport',
+            'Abeid Amani Karume International Airport',
             'Mbeya Airport',
             'Pemba Airport',
             ]:
@@ -58,11 +58,11 @@ with open(airport_filename, 'r') as airports_file:
             y += 0.05
 
         if name in [
-            'Abeid Karume International Airport',
+            'Abeid Amani Karume International Airport',
             'Mtwara Airport',
             'Julius Nyerere International Airport',
-            'Lindi Airport',
-            'Mafia Airport',
+            'Lake Manyara Airport',
+            'Mafia Island Airport',
             'Pemba Airport',
             'Tanga Airport',
             'Songwe Airport',
@@ -75,6 +75,7 @@ with open(airport_filename, 'r') as airports_file:
             align = 'left'
 
         name = name.replace(' Airport', '')
+        name = name.replace(' International', '')
         ax.text(x, y, name, transform=proj_lat_lon, zorder=4, ha=align)
 
 ax.scatter(xs, ys, facecolor='#b41f78', s=5, zorder=3)

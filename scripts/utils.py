@@ -37,7 +37,7 @@ def plot_pop(plt, ax, data_path):
     """Plot population background
     """
     # WorldPop TZA_popmap15adj_v2b
-    population_filename = os.path.join(data_path, 'Infrastructure'', Population',
+    population_filename = os.path.join(data_path, 'Infrastructure', 'Population',
                                        'TZA_popmap15adj_v2b_resampled.tif')
 
     # Read in raster data
@@ -76,7 +76,8 @@ def plot_regions(ax, data_path):
     # Regions
     provinces_filename = os.path.join(
         data_path,
-        'Boundary_datasets',
+        'Infrastructure',
+        'Boundaries',
         'ne_10m_admin_1_states_provinces_lakes.shp'
     )
 
