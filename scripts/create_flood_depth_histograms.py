@@ -132,8 +132,8 @@ for (ax_num, ax), details in zip(enumerate(axes.flat), hazard_file_details):
     # exclude infinite and nan
     data = data[np.isfinite(data)]
     # exclude negative and 'max' values
-    data = data[(data >= 0) & (data < 999)]
-    ax.set_ylim([0,10000])
+    data = data[(data > 0) & (data < 999)]
+    ax.set_ylim([0,20000])
     ax.set_xlim([0,15])
     ax.hist(data, bins=15, range=(0, 15))
 

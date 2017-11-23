@@ -13,20 +13,20 @@ import numpy as np
 
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+data_path = os.path.join(base_path, 'data', 'Infrastructure')
 
 # WorldPop TZA_popmap15adj_v2b
-population_filename = os.path.join(data_path, 'Population_data', 'TZA_popmap15adj_v2b_cropped.tif')
+population_filename = os.path.join(data_path, 'Population', 'TZA_popmap15adj_v2b_cropped.tif')
 
 # TZ_TransNet_Roads, clipped to Tanzania
-major_road_filename = os.path.join(data_path, 'Road_data', 'TZ_TransNet_Roads_4326.shp')
+trunk_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
 # PMO_TanRoads
-regional_road_filename = os.path.join(data_path, 'Road_data', 'PMO_Tanroads_mwanza.shp')
-# OSM gis.osm_roads_free_1
-local_road_filename = os.path.join(data_path, 'Road_data', 'gis.osm_roads_free_1_mwanza.shp')
+regional_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'regional_roads_2017.shp')
+# OSM
+local_road_filename = os.path.join(data_path, 'Roads', 'osm_mainroads', 'osm_mainroads.shp')
 
 # Route to highlight
-route_filename = os.path.join(data_path, 'Road_data', 'highlight_route_mwanza.shp')
+route_filename = os.path.join(data_path, 'Roads', 'highlight_route_mwanza.shp')
 
 
 # Create figure
@@ -99,7 +99,7 @@ for record in shpreader.Reader(regional_road_filename).records():
         zorder=3)
 
 # Major roads
-for record in shpreader.Reader(major_road_filename).records():
+for record in shpreader.Reader(trunk_road_filename).records():
     geom = record.geometry
     country = record.attributes["Country"]
     if country == "Tanzania":

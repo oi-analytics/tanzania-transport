@@ -4,6 +4,8 @@
 import csv
 import os
 
+from utils import plot_pop, plot_countries, plot_regions
+
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.patches as mpatches
@@ -16,25 +18,22 @@ from matplotlib.image import BboxImage
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
+inf_path = os.path.join(data_path, 'Infrastructure')
 resource_path = os.path.join(base_path, 'resources')
 
 # TZ_TransNet_Roads, clipped to Tanzania
-road_filename = os.path.join(data_path, 'Road_data', 'TZ_TransNet_Roads.shp')
+trunk_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
+regional_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
 
-# TransNet_Railroads
-railway_filename = os.path.join(data_path, 'Railway_data', 'TZ_TransNet_Railroads.shp')
+# Railways
+railway_nodes_filename = os.path.join(inf_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
+railway_ways_filename = os.path.join(inf_path, 'Railways', 'tanzania-rail-ways-processed.shp')
 
-# TZ_TransNet_FerryTerminals and TZ_TransNet_FerryRoutes
-ferry_path = os.path.join(data_path, 'Port_data')
-ferry_terminals_filename = os.path.join(ferry_path, 'TZ_TransNet_FerryTerminals.shp')
-ferry_routes_filename = os.path.join(ferry_path, 'TZ_TransNet_FerryRoutes.shp')
+# Ports
+ports_filename = os.path.join(inf_path, 'Ports', 'TZ_ports.csv')
 
-# tanzania_airports from ourairports.com
-airport_filename = os.path.join(data_path, 'Airport_data', 'tanzania_airports.csv')
-
-# Natural Earth countries
-states_filename = os.path.join(data_path, 'Boundary_datasets',
-                               'ne_10m_admin_0_countries_lakes.shp')
+# Airports
+airport_filename = os.path.join(inf_path, 'Airports', 'TZ_airport_node_flows.csv')
 
 # Icons
 boat_icon_filename = os.path.join(resource_path, 'boat.png')
@@ -53,65 +52,55 @@ y0 = 0.5
 y1 = -12.5
 ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
-# Africa, for Tanzania and neighbours
-for record in shpreader.Reader(states_filename).records():
-    if record.attributes['CONTINENT'] != 'Africa':
-        continue
+# Background
+plot_countries(ax, data_path)
+plot_pop(plt, ax, data_path)
 
+# Major roads
+for record in shpreader.Reader(trunk_road_filename).records():
     geom = record.geometry
     ax.add_geometries(
         [geom],
         crs=proj_lat_lon,
-        edgecolor='white',
-        facecolor='#efefef',
-        zorder=1)
+        edgecolor='#e85512',
+        facecolor='none',
+        zorder=2)
 
-# Major roads
-for record in shpreader.Reader(road_filename).records():
-    geom = record.geometry
-    country = record.attributes["Country"]
-    if country == "Tanzania":
-        ax.add_geometries(
-            [geom],
-            crs=proj_3857,
-            edgecolor='#1f78b4',
-            facecolor='none',
-            zorder=2)
-
-# Railways
-for record in shpreader.Reader(railway_filename).records():
-    geom = record.geometry
-    country = record.attributes["Country"]
-    if country == "Tanzania":
-        ax.add_geometries(
-            [geom],
-            crs=proj_3857,
-            edgecolor='#33a02c',
-            facecolor='none',
-            zorder=3)
-
-# Ferry routes
-for record in shpreader.Reader(ferry_routes_filename).records():
+# Regional roads
+for record in shpreader.Reader(regional_road_filename).records():
     geom = record.geometry
     ax.add_geometries(
         [geom],
-        crs=proj_3857,
-        edgecolor='#ff7f00',
+        crs=proj_lat_lon,
+        edgecolor='#ed9a36',
+        facecolor='none',
+        zorder=2)
+
+# Railways
+for record in shpreader.Reader(railway_ways_filename).records():
+    geom = record.geometry
+    ax.add_geometries(
+        [geom],
+        crs=proj_lat_lon,
+        edgecolor='#33a02c',
         facecolor='none',
         zorder=3)
 
 # Ferry ports
 ferry_im = plt.imread(boat_icon_filename)
-for record in shpreader.Reader(ferry_terminals_filename).records():
-    geom = record.geometry
-    offset = 15000
-    img_extent = (
-        geom.x - offset,
-        geom.x + offset,
-        geom.y - offset,
-        geom.y + offset
-    )
-    ax.imshow(ferry_im, origin='upper', extent=img_extent, transform=proj_3857, zorder=4)
+with open(ports_filename, 'r', encoding="utf-8") as fh:
+    r = csv.DictReader(fh)
+    for record in r:
+        x = float(record['longitude'])
+        y = float(record['latitude'])
+        offset = 0.15
+        img_extent = (
+            x - offset,
+            x + offset,
+            y - offset,
+            y + offset
+        )
+        ax.imshow(ferry_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=4)
 
 # Airports
 plane_im = plt.imread(plane_icon_filename)
@@ -121,18 +110,13 @@ with open(airport_filename, 'r') as airports_file:
         x = float(line['longitude_deg'])
         y = float(line['latitude_deg'])
 
-        # Small airports with smaller icon
-        if line['type'] == 'large_airport':
-            offset = 0.2
-        elif line['type'] == 'medium_airport':
-            offset = 0.125
-        else:
-            offset = 0.1
+        # Offset defines icon size
+        offset = 0.15
 
-        # Nudge airports which are next to ferry ports
-        if line['name'] == 'Bukoba Airport':
-            x -= 0.25
-        elif line['name'] == 'Musoma Airport':
+        # Nudge airports which are next to ports
+        if line['name'] in ('Bukoba Airport', 'Julius Nyerere International Airport'):
+            x -= 0.2
+        elif line['name'] in ('Musoma Airport', 'Kigoma Airport'):
             x += 0.2
         elif line['name'] == 'Mwanza Airport':
             x += 0.2
@@ -176,13 +160,13 @@ class HandlerImage(HandlerBase):
 
 boat_handle = mpatches.Patch()
 plane_handle = mpatches.Patch()
-road_handle = mpatches.Patch(color='#1f78b4')
+major_road_handle = mpatches.Patch(color='#e85512')
+regional_road_handle = mpatches.Patch(color='#ed9a36')
 rail_handle = mpatches.Patch(color='#33a02c')
-ferry_handle = mpatches.Patch(color='#ff7f00')
 
 plt.legend(
-    [plane_handle, boat_handle, road_handle, rail_handle, ferry_handle],
-    ["Airport", "Ferry Terminal", "Major Road", "Railway", "Ferry route"],
+    [plane_handle, boat_handle, major_road_handle, regional_road_handle, rail_handle],
+    ["Airport", "Port", "Trunk Road", "Regional Road", "Railway"],
     handler_map={
         boat_handle: HandlerImage(boat_icon_filename),
         plane_handle: HandlerImage(plane_icon_filename),

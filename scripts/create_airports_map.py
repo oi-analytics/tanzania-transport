@@ -16,7 +16,7 @@ base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
 
 # tanzania_airports from ourairports.com
-airport_filename = os.path.join(data_path, 'Airport_data', 'TZ_airport_locations.csv')
+airport_filename = os.path.join(data_path, 'Infrastructure', 'Airports', 'TZ_airport_node_flows.csv')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -41,15 +41,15 @@ ys = []
 with open(airport_filename, 'r') as airports_file:
     reader = csv.DictReader(airports_file)
     for line in reader:
-        x = float(line['Longitude'])
-        y = float(line['Latitude'])
+        x = float(line['longitude_deg'])
+        y = float(line['latitude_deg'])
         xs.append(x)
         ys.append(y)
-        name = line['Airport names']
+        name = line['name']
         if name in [
             'Julius Nyerere International Airport',
             'Kilimanjaro International Airport',
-            'Abeid Karume International Airport',
+            'Abeid Amani Karume International Airport',
             'Mbeya Airport',
             'Pemba Airport',
             ]:
@@ -58,11 +58,11 @@ with open(airport_filename, 'r') as airports_file:
             y += 0.05
 
         if name in [
-            'Abeid Karume International Airport',
+            'Abeid Amani Karume International Airport',
             'Mtwara Airport',
             'Julius Nyerere International Airport',
-            'Lindi Airport',
-            'Mafia Airport',
+            'Lake Manyara Airport',
+            'Mafia Island Airport',
             'Pemba Airport',
             'Tanga Airport',
             'Songwe Airport',
@@ -75,6 +75,7 @@ with open(airport_filename, 'r') as airports_file:
             align = 'left'
 
         name = name.replace(' Airport', '')
+        name = name.replace(' International', '')
         ax.text(x, y, name, transform=proj_lat_lon, zorder=4, ha=align)
 
 ax.scatter(xs, ys, facecolor='#b41f78', s=5, zorder=3)

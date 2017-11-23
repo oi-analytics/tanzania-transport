@@ -15,8 +15,8 @@ def plot_countries(ax, data_path):
     proj_lat_lon = ccrs.PlateCarree()
 
     # Natural Earth countries
-    states_filename = os.path.join(data_path, 'Boundary_datasets',
-                                'ne_10m_admin_0_countries_lakes.shp')
+    states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
+                                   'ne_10m_admin_0_countries_lakes.shp')
 
 
     # Africa, for Tanzania and neighbours
@@ -37,7 +37,8 @@ def plot_pop(plt, ax, data_path):
     """Plot population background
     """
     # WorldPop TZA_popmap15adj_v2b
-    population_filename = os.path.join(data_path, 'Population_data', 'TZA_popmap15adj_v2b_resampled.tif')
+    population_filename = os.path.join(data_path, 'Infrastructure', 'Population',
+                                       'TZA_popmap15adj_v2b_resampled.tif')
 
     # Read in raster data
     gdal.UseExceptions()
@@ -64,7 +65,7 @@ def plot_pop(plt, ax, data_path):
     colors = plt.get_cmap('Greys')
 
     # Plot population data
-    im = ax.imshow(data, extent=lat_lon_extent, cmap=colors, norm=LogNorm(vmin=0.1, vmax=10000), zorder=1, alpha=0.5)
+    ax.imshow(data, extent=lat_lon_extent, cmap=colors, norm=LogNorm(vmin=0.1, vmax=10000), zorder=1, alpha=0.5)
 
 
 def plot_regions(ax, data_path):
@@ -75,7 +76,8 @@ def plot_regions(ax, data_path):
     # Regions
     provinces_filename = os.path.join(
         data_path,
-        'Boundary_datasets',
+        'Infrastructure',
+        'Boundaries',
         'ne_10m_admin_1_states_provinces_lakes.shp'
     )
 

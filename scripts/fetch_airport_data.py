@@ -9,7 +9,8 @@ OUTPUT_FILE = os.path.join(
     os.path.dirname(__file__),
     '..',
     'data',
-    'Airport_data',
+    'Infrastructure',
+    'Airports',
     'tanzania_airports.csv'
 )
 DATA_URL = 'http://ourairports.com/data/airports.csv'

@@ -11,63 +11,48 @@ import fiona
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
+roads_path = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles')
 
 # PMO_TanRoads
-regional_road_filename = os.path.join(data_path, 'Road_data', 'PMO_Tanroads_3857.shp')
+regional_road_filename = os.path.join(roads_path, 'region_roads_2017.shp')
+trunk_road_filename = os.path.join(roads_path, 'trunk_roads_2017.shp')
 
 # Sum lengths by type
-lengths_by_qlty = {
-    'Earth': 0.0,
-    'Gravel': 0.0,
-    'Not Existing': 0.0,
-    'Paved': 0.0,
-    'Unpaved': 0.0
-}
 type_and_qlty = defaultdict(int)
-total_length_m = 0.0
+total_length = 0.0
 
 with fiona.open(regional_road_filename, 'r') as shp:
     for line in shp:
-        road_qlty = line['properties']['road_qlty']
+        km_paved = line['properties']['KMPAVED']
+        km_unpaved = line['properties']['KMUNPAVED']
 
-        # using the 'type' attribute and 'surfacecon' only ever gives
-        # trunk-unpaved OR regional-paved OR null-null (never e.g. trunk-paved)
+        # metre length from geometry - needs to be reprojected
+        # geom_length = shape(line['geometry']).length
 
-        type_ = line['properties']['roadclass']
-        type_ = type_.strip()
+        total_length += km_paved + km_unpaved
 
-        if type_ == 'R':
-            type_ = 'Regional Road'
-        if type_ == 'T':
-            type_ = 'Trunk Road'
+        type_and_qlty[("regional", "paved")] += km_paved
+        type_and_qlty[("regional", "unpaved")] += km_unpaved
 
-        if road_qlty == 'Paved':
-            surfacecon = 'Paved'
-        else:
-            surfacecon = 'Unpaved'
+with fiona.open(trunk_road_filename, 'r') as shp:
+    for line in shp:
+        km_paved = line['properties']['KMPAVED']
+        km_unpaved = line['properties']['KMUNPAVED']
 
-        # kilometre length from attr - sometimes null
-        length_1 = line['properties']['length_1']
-        # metre length from geometry
-        length = shape(line['geometry']).length
+        # metre length from geometry - needs to be reprojected
+        # geom_length = shape(line['geometry']).length
 
-        total_length_m += length
-        lengths_by_qlty[road_qlty] += length
+        total_length += km_paved + km_unpaved
 
-        type_and_qlty[(type_, surfacecon)] += length
+        type_and_qlty[("trunk", "paved")] += km_paved
+        type_and_qlty[("trunk", "unpaved")] += km_unpaved
 
-print("Total road length: {:.2f} in {}".format(total_length_m, 'metres'))
+print("Total road length: {:.2f} in {}".format(total_length, 'kilometres'))
 
 # Output to CSV
-output_filename = os.path.join(base_path, 'outputs', 'PMO_TanRoads_3857_length_by_road_qlty.csv')
-output_type_and_qlty_filename = os.path.join(base_path, 'outputs', 'PMO_TanRoads_3857_length_by_type_surfacecon.csv')
-
-with open(output_filename, 'w') as output_file:
-    output_file.write('road_qlty,length(km)\n')
-    for road_qlty, length_m in lengths_by_qlty.items():
-        output_file.write("{},{:.3f}\n".format(road_qlty, length_m/1000))
+output_type_and_qlty_filename = os.path.join(base_path, 'outputs', 'road_length_by_type_paved.csv')
 
 with open(output_type_and_qlty_filename, 'w') as output_file:
     output_file.write('type,surfacecon,length(km)\n')
-    for (type_, surfacecon), length_m in type_and_qlty.items():
-        output_file.write("{},{},{:.3f}\n".format(type_, surfacecon, length_m/1000))
+    for (type_, surfacecon), length_km in type_and_qlty.items():
+        output_file.write("{},{},{:.3f}\n".format(type_, surfacecon, length_km))

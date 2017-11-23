@@ -15,8 +15,9 @@ base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
 
 # TransNet_Railroads
-railway_filename = os.path.join(data_path, 'Railway_data', 'TZ_TransNet_Railroads.shp')
-station_filename = os.path.join(data_path, 'Railway_data', 'TZ_rail_station_locations.csv')
+# Railways
+railway_nodes_filename = os.path.join(data_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
+railway_ways_filename = os.path.join(data_path, 'Railways', 'tanzania-rail-ways-processed.shp')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -36,36 +37,38 @@ plot_pop(plt, ax, data_path)
 plot_regions(ax, data_path)
 
 # Railways
-for record in shpreader.Reader(railway_filename).records():
+for record in shpreader.Reader(railway_ways_filename).records():
     geom = record.geometry
-    country = record.attributes["Country"]
-    if country == "Tanzania":
-        ax.add_geometries(
-            [geom],
-            crs=proj_3857,
-            edgecolor='#33a02c',
-            facecolor='none',
-            zorder=3)
+    ax.add_geometries(
+        [geom],
+        crs=proj_lat_lon,
+        edgecolor='#33a02c',
+        facecolor='none',
+        zorder=3)
 
 # Stations
-with open(station_filename, 'r') as station_file:
-    reader = csv.DictReader(station_file, delimiter="\t")
-    xs = []
-    ys = []
-    for line in reader:
-        x = float(line['Longitude'])
-        y = float(line['Latitude'])
-        xs.append(x)
-        ys.append(y)
+xs = []
+ys = []
+for record in shpreader.Reader(railway_ways_filename).records():
+    node_type = record.attributes['node_type']
+    if node_type == 'junction':
+        continue
 
-        name = line['Region']
+    geom = record.geometry
+    x = geom.x
+    y = geom.y
+    xs.append(x)
+    ys.append(y)
+
+    if node_type in ('major', 'transfer', 'final'):
+        name = record.attributes['name']
         if name in ('Arusha', 'Mruazi', 'Morogoro'):
             y -= 0.35
         else:
             y += 0.05
 
         ax.text(x, y, name, transform=proj_lat_lon, zorder=5)
-    ax.scatter(xs, ys, facecolor='#000000', s=3, zorder=4)
+ax.scatter(xs, ys, facecolor='#000000', s=3, zorder=4)
 
 
 plt.title('Major Railway Stations in Tanzania')

@@ -12,15 +12,14 @@ import matplotlib.pyplot as plt
 
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+data_path = os.path.join(base_path, 'data', 'Infrastructure')
 
-states_filename = os.path.join(data_path, 'Boundary_datasets',
+states_filename = os.path.join(data_path, 'Boundaries',
                                'ne_10m_admin_0_countries_lakes.shp')
 
-# TZ_TransNet_Roads, clipped to Tanzania
-major_road_filename = os.path.join(data_path, 'Road_data', 'TZ_TransNet_Roads.shp')
-# PMO_TanRoads
-regional_road_filename = os.path.join(data_path, 'Road_data', 'PMO_Tanroads_3857.shp')
+# Roads
+regional_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
+trunk_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -50,30 +49,28 @@ for record in shpreader.Reader(regional_road_filename).records():
         facecolor='none',
         zorder=2)
 
-# Major roads
-for record in shpreader.Reader(major_road_filename).records():
+# Trunk roads
+for record in shpreader.Reader(trunk_road_filename).records():
     geom = record.geometry
     outline = geom.buffer(2000)
-    country = record.attributes["Country"]
-    if country == "Tanzania":
-        ax.add_geometries(
-            [outline],
-            crs=proj_3857,
-            linewidth=3,
-            edgecolor='#1f78b4',
-            facecolor='none',
-            zorder=3)
+    ax.add_geometries(
+        [outline],
+        crs=proj_3857,
+        linewidth=3,
+        edgecolor='#1f78b4',
+        facecolor='none',
+        zorder=3)
 
 # Legend
 legend_handles = [
-    mpatches.Patch(color='#1f78b4', label='Major Roads'),
+    mpatches.Patch(color='#1f78b4', label='Trunk Roads'),
     mpatches.Patch(color='#33a02c', label='Regional Roads'),
 ]
 plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Major and Regional Roads in Tanzania')
+plt.title('Trunk and Regional Roads in Tanzania')
 
 
 output_filename = os.path.join(

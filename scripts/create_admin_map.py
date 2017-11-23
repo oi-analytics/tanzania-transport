@@ -20,13 +20,15 @@ data_path = os.path.join(
 
 states_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
+    'Infrastructure',
+    'Boundaries',
     'ne_10m_admin_0_countries_lakes.shp'
 )
 
 provinces_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
+    'Infrastructure',
+    'Boundaries',
     'ne_10m_admin_1_states_provinces_lakes.shp'
 )
 
@@ -95,6 +97,8 @@ for neighbour in neighbours:
         neighbour['cx'],
         neighbour['cy'],
         neighbour['country'].upper(),
+        alpha=0.9,
+        size=9,
         horizontalalignment='left',
         transform=proj)
 
@@ -135,6 +139,8 @@ for record in shpreader.Reader(provinces_filename).records():
             cx,
             cy,
             name,
+            alpha=0.8,
+            size=8,
             horizontalalignment=ha,
             transform=proj)
 

@@ -3,13 +3,13 @@
 To contain project-specific scripts and workflows, with the intention of
 relying on other packages or projects for core functionality.
 
-Extract the contents of `Assembled_Tanzania_data.7z` to a directory named
-`./data` adjacent to this README. (On Windows, right click > 7-Zip > Extract
-Here, then rename to `data`.)
+Download the `Infrastructure` and `tanzania_flood` folders from OneDrive to a
+directory named `./data` adjacent to this README.
 
-Run `make all` to generate outputs. Or without make (or if Makefile is
-incomplete), run each script in `./scripts`, e.g.
-`python scripts/calculate_rail_length.py`
+Run each script in `./scripts`, e.g. `python scripts/calculate_rail_length.py`
+
+The intention is that `make all` will generate all outputs, but this is
+currently incomplete.
 
 ## Python requirements
 
