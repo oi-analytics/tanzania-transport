@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data', 'Infrastructure')
+data_path = os.path.join(base_path, 'data')
 
-states_filename = os.path.join(data_path, 'Boundaries',
+states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
                                'ne_10m_admin_0_countries_lakes.shp')
 
 # Roads
-regional_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
-trunk_road_filename = os.path.join(data_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
+regional_road_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
+trunk_road_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -43,8 +43,8 @@ for record in shpreader.Reader(regional_road_filename).records():
     geom = record.geometry
     ax.add_geometries(
         [geom],
-        crs=proj_3857,
-        edgecolor='#33a02c',
+        crs=proj_lat_lon,
+        edgecolor='#ed9a36',
         linewidth=3,
         facecolor='none',
         zorder=2)
@@ -52,19 +52,18 @@ for record in shpreader.Reader(regional_road_filename).records():
 # Trunk roads
 for record in shpreader.Reader(trunk_road_filename).records():
     geom = record.geometry
-    outline = geom.buffer(2000)
     ax.add_geometries(
-        [outline],
-        crs=proj_3857,
+        [geom],
+        crs=proj_lat_lon,
         linewidth=3,
-        edgecolor='#1f78b4',
+        edgecolor='#d1170a',
         facecolor='none',
         zorder=3)
 
 # Legend
 legend_handles = [
-    mpatches.Patch(color='#1f78b4', label='Trunk Roads'),
-    mpatches.Patch(color='#33a02c', label='Regional Roads'),
+    mpatches.Patch(color='#d1170a', label='Trunk Roads'),
+    mpatches.Patch(color='#ed9a36', label='Regional Roads'),
 ]
 plt.legend(
     handles=legend_handles,

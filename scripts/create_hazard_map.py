@@ -94,7 +94,9 @@ def get_data(filename):
     gdal.UseExceptions()
     ds = gdal.Open(filename)
     data = ds.ReadAsArray()
-    data[data < 0] = 0
+    data[data <= 0.25] = 0
+    data[(data > 0.25) & (data <=25)] = 1
+    data[data > 25] = 2
 
     gt = ds.GetGeoTransform()
 
@@ -132,7 +134,7 @@ colors._segmentdata['alpha'][0] = (0, 0, 0)  # set zero values to transparent wh
 
 # Create figure
 fig, axes = plt.subplots(
-    nrows=1+len(models),
+    nrows=2+len(models),
     ncols=len(return_periods),
     subplot_kw=dict(projection=proj),
     figsize=(4, 9),
@@ -145,7 +147,7 @@ min_val = np.min([np.min(data) for data, lat_lon in data_with_lat_lon])
 max_val = np.max([np.max(data) for data, lat_lon in data_with_lat_lon])
 
 # Extent of area to focus on
-zoom_extent = (37.5, 39.5, -8.25, -6.25)
+zoom_extent = (37.8, 39.6, -8.5, -6.7)
 
 # Plot data to axes
 for (ax_num, ax), (data, lat_lon_extent), details in zip(enumerate(axes.flat), data_with_lat_lon, hazard_file_details):
@@ -167,38 +169,40 @@ for (ax_num, ax), (data, lat_lon_extent), details in zip(enumerate(axes.flat), d
             transform=ax.transAxes)
 
     ax.set_extent(zoom_extent, crs=proj)
-    ax.add_geometries([tz_geom], crs=proj, edgecolor='white', facecolor='#efefef', zorder=0)
+    ax.add_geometries([tz_geom], crs=proj, edgecolor='#d7d7d7', facecolor='#fafafa', zorder=0)
     im = ax.imshow(data, extent=lat_lon_extent, cmap=colors, vmin=min_val, vmax=max_val, zorder=1)
     ax.add_geometries(major_lakes, crs=proj, facecolor='white', zorder=2)
 
+# Add context
+for ax_num, ax in enumerate(axes.flat):
+    if ax_num == len(return_periods)*(len(models)+1):
+        ax.locator_params(tight=True)
+        tz_extent = (28.6, 41.4, -0.1, -13.2)
+        ax.set_extent(tz_extent, crs=proj)
+
+        # Tanzania
+        ax.add_geometries([tz_geom], crs=proj, edgecolor='white', facecolor='#fafafa')
+
+        # Neighbours
+        for record in shpreader.Reader(states_filename).records():
+            country_code = record.attributes['ISO_A2']
+            if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
+                geom = record.geometry
+                ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
+
+        # Zoom extent: (37.5, 39.5, -8.25, -6.25)
+        x0, x1, y0, y1 = zoom_extent
+        box = shapely.geometry.Polygon(((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)))
+        ax.add_geometries([box], crs=proj, edgecolor='#000000', facecolor='#d7d7d700')
+
+        im = ax.imshow(data, extent=lat_lon_extent, cmap=colors, vmin=min_val, vmax=max_val, zorder=1)
+    elif ax_num > len(return_periods)*(len(models)+1):
+        ax.locator_params(tight=True)
+        ax.outline_patch.set_visible(False)
+
 # Adjust layout
 ax_list = list(axes.flat)
-plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.04, rect=(0, 0.17, 1, 1))
-
-# Add colorbar
-cbar = plt.colorbar(im, ax=ax_list, fraction=0.05, pad=0.01, drawedges=False, orientation='horizontal')
-cbar.outline.set_color("none")
-cbar.ax.set_xlabel('Flood depth (m)')
-
-# Add context
-ax = plt.axes([0.025, 0.005, 0.3, 0.18], projection=proj)
-tz_extent = (28.6, 41.4, -0.1, -13.2)
-ax.set_extent(tz_extent, crs=proj)
-
-# Tanzania
-ax.add_geometries([tz_geom], crs=proj, edgecolor='white', facecolor='#d7d7d7')
-
-# Neighbours
-for record in shpreader.Reader(states_filename).records():
-    country_code = record.attributes['ISO_A2']
-    if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
-        geom = record.geometry
-        ax.add_geometries([geom], crs=proj, edgecolor='white', facecolor='#efefef')
-
-# Zoom extent: (37.5, 39.5, -8.25, -6.25)
-x0, x1, y0, y1 = zoom_extent
-box = shapely.geometry.Polygon(((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)))
-ax.add_geometries([box], crs=proj, edgecolor='#000000', facecolor='#d7d7d700')
+plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.02, rect=(0, 0, 1, 1))
 
 # Save
 output_filename = os.path.join(
