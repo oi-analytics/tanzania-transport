@@ -20,13 +20,15 @@ data_path = os.path.join(
 
 states_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
+    'Infrastructure',
+    'Boundaries',
     'ne_10m_admin_0_countries_lakes.shp'
 )
 
 provinces_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
+    'Infrastructure',
+    'Boundaries',
     'ne_10m_admin_1_states_provinces_lakes.shp'
 )
 

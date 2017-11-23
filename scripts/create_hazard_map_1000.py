@@ -23,15 +23,15 @@ data_path = os.path.join(
 
 states_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
+    'Infrastructure',
+    'Boundaries',
     'ne_10m_admin_0_countries_lakes.shp'
 )
 
 lakes_filename = os.path.join(
     data_path,
-    'Boundary_datasets',
-    'Lakes_and_rivers',
-    'Lakes_and_rivers',
+    'Infrastructure',
+    'Boundaries',
     'Major Lakes.shp'
 )
 
@@ -123,8 +123,8 @@ for record in shpreader.Reader(lakes_filename).records():
     major_lakes.append(record.geometry)
 
 proj = ccrs.PlateCarree()
-colors = plt.get_cmap('viridis_r')
-colors.colors[0] = (1, 1, 1, 0)  # set zero values to transparent white
+colors = plt.get_cmap('Blues')
+# colors.colors[0] = (1, 1, 1, 0)  # set zero values to transparent white
 
 # Create figure
 fig, axes = plt.subplots(

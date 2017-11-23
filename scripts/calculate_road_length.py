@@ -11,9 +11,11 @@ import fiona
 # Input data
 base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
+roads_path = os.path.join(data_path, 'Infrastructure', 'Roads', 'Tanroads_flow_shapefiles')
 
 # PMO_TanRoads
-regional_road_filename = os.path.join(data_path, 'Road_data', 'PMO_Tanroads_3857.shp')
+regional_road_filename = os.path.join(roads_path, 'region_roads_2017.shp')
+trunk_road_filename = os.path.join(roads_path, 'trunk_roads_2017.shp')
 
 # Sum lengths by type
 lengths_by_qlty = {
@@ -59,8 +61,8 @@ with fiona.open(regional_road_filename, 'r') as shp:
 print("Total road length: {:.2f} in {}".format(total_length_m, 'metres'))
 
 # Output to CSV
-output_filename = os.path.join(base_path, 'outputs', 'PMO_TanRoads_3857_length_by_road_qlty.csv')
-output_type_and_qlty_filename = os.path.join(base_path, 'outputs', 'PMO_TanRoads_3857_length_by_type_surfacecon.csv')
+output_filename = os.path.join(base_path, 'outputs', 'road_length_by_road_qlty.csv')
+output_type_and_qlty_filename = os.path.join(base_path, 'outputs', 'road_length_by_type_surfacecon.csv')
 
 with open(output_filename, 'w') as output_file:
     output_file.write('road_qlty,length(km)\n')

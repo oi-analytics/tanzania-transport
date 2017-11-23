@@ -13,17 +13,16 @@ from rtree import index
 import shapely.geometry
 import shapely.ops
 
-BASE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'Railway_data')
+BASE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'Infrastructure', 'Railways')
 
 NODES_PATH = os.path.join(BASE_PATH, 'tanzania-rail-nodes.geojson')
 WAYS_PATH = os.path.join(BASE_PATH, 'tanzania-rail-ways.geojson')
 
-TRANSCRIBED_NODES_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_nodes.csv')  # major/final/transfer stations are matched, minor stations much less
-# TRANSCRIBED_WAYS_PATH = os.path.join(BASE_PATH, 'transcribed', 'TZ_railways_map_edges.csv')  # not used because nodes are too mismatched
+TRANSCRIBED_NODES_PATH = os.path.join(BASE_PATH, 'source', 'TZ_railways_map_nodes.csv')  # major/final/transfer stations are matched, minor stations much less
+# TRANSCRIBED_WAYS_PATH = os.path.join(BASE_PATH, 'source', 'TZ_railways_map_edges.csv')  # not used because nodes are too mismatched
 
 NODES_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-nodes-processed.geojson')
 WAYS_OUTPUT_PATH = os.path.join(BASE_PATH, 'tanzania-rail-ways-processed.geojson')
-
 
 
 def main():

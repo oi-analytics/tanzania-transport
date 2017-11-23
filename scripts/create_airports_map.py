@@ -16,7 +16,7 @@ base_path = os.path.join(os.path.dirname(__file__), '..')
 data_path = os.path.join(base_path, 'data')
 
 # tanzania_airports from ourairports.com
-airport_filename = os.path.join(data_path, 'Airport_data', 'TZ_airport_locations.csv')
+airport_filename = os.path.join(data_path, 'Infrastructure', 'Airports', 'TZ_airport_node_flows.csv')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -41,11 +41,11 @@ ys = []
 with open(airport_filename, 'r') as airports_file:
     reader = csv.DictReader(airports_file)
     for line in reader:
-        x = float(line['Longitude'])
-        y = float(line['Latitude'])
+        x = float(line['longitude_deg'])
+        y = float(line['latitude_deg'])
         xs.append(x)
         ys.append(y)
-        name = line['Airport names']
+        name = line['name']
         if name in [
             'Julius Nyerere International Airport',
             'Kilimanjaro International Airport',
