@@ -76,10 +76,10 @@ def get_shortest_distance(sg,nodes,geom_in):
     sg_subset = nx.Graph()
     for n0,n1 in nx.bfs_edges(sg,tuple(nodes[pos0_i])):
         sg_subset.add_edge(n0,n1,attr=sg[n0][n1])
-        if sg[n0][n1]['highway'] == 'trunk' or sg[n0][n1]['highway'] == 'primary':
+        if sg[n0][n1]['highway'] == 'trunk':
             end_points = [n0,n1]
             break
-
+# or sg[n0][n1]['highway'] == 'primary'
     nodes_sub = np.array(sg_subset.nodes())
 
     for n0, n1 in sg_subset.edges():
@@ -87,26 +87,29 @@ def get_shortest_distance(sg,nodes,geom_in):
         distance = get_path_length(path)
         sg_subset[n0][n1]['distance'] = distance   
     inb = []
-    for point in end_points:   
-         # Compute the length of the road segments.
-        # Get the closest nodes in the graph.
-        pos0_i = np.argmin(np.sum((nodes_sub[:,::-1] - pos0)**2, axis=1))
-        pos1_i = np.argmin(np.sum((nodes_sub[:,::-1] - tuple(reversed(point)))**2, axis=1))
-       
-        # Compute the shortest path.
-        path = nx.shortest_path(sg_subset,
-                                source=tuple(nodes_sub[pos0_i]),
-                                target=tuple(nodes_sub[pos1_i]),
-                                weight='distance')
+    try:
+        for point in end_points:   
+             # Compute the length of the road segments.
+            # Get the closest nodes in the graph.
+            pos0_i = np.argmin(np.sum((nodes_sub[:,::-1] - pos0)**2, axis=1))
+            pos1_i = np.argmin(np.sum((nodes_sub[:,::-1] - tuple(reversed(point)))**2, axis=1))
+           
+            # Compute the shortest path.
+            path = nx.shortest_path(sg_subset,
+                                    source=tuple(nodes_sub[pos0_i]),
+                                    target=tuple(nodes_sub[pos1_i]),
+                                    weight='distance')
+            
+            roads = pd.DataFrame([sg_subset[path[i]][path[i + 1]]
+                                  for i in range(len(path) - 1)],
+                                 columns=['osm_id', 'name',
+                                          'highway','distance'])
+            
+            if roads['distance'].sum() > 0:
+                inb.append(roads['distance'].sum())
+    except: 
+        None
         
-        roads = pd.DataFrame([sg_subset[path[i]][path[i + 1]]
-                              for i in range(len(path) - 1)],
-                             columns=['osm_id', 'name',
-                                      'highway','distance'])
-        
-        if roads['distance'].sum() > 0:
-            inb.append(roads['distance'].sum())
- 
     return min(inb)
 
 def distance_trunk(region,flooded=False):
