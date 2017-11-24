@@ -2,6 +2,8 @@
 """
 import os
 
+from boltons.iterutils import pairwise
+from geopy.distance import vincenty
 from osgeo import gdal
 from matplotlib.colors import LogNorm
 
@@ -128,3 +130,25 @@ def plot_regions(ax, data_path):
                 size=6,
                 horizontalalignment=ha,
                 transform=proj_lat_lon)
+
+
+def line_length(line, ellipsoid='WGS-84'):
+    """Length of a line in meters, given in geographic coordinates
+
+    Adapted from https://gis.stackexchange.com/questions/4022/looking-for-a-pythonic-way-to-calculate-the-length-of-a-wkt-linestring#answer-115285
+
+    Args:
+        line: a shapely LineString object with WGS-84 coordinates
+        ellipsoid: string name of an ellipsoid that `geopy` understands (see
+            http://geopy.readthedocs.io/en/latest/#module-geopy.distance)
+
+    Returns:
+        Length of line in meters
+    """
+    if line.geometryType() == 'MultiLineString':
+        return sum(line_length(segment) for segment in line)
+
+    return sum(
+        vincenty(a, b, ellipsoid=ellipsoid).meters
+        for a, b in pairwise(line.coords)
+    )

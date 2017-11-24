@@ -6,5 +6,9 @@ seaborn
 cartopy
 gdal
 fiona
-networkx 
+rtree
+shapely
+networkx
 json
+boltons
+geopy
