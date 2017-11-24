@@ -16,8 +16,8 @@ data_path = os.path.join(base_path, 'data')
 
 # TransNet_Railroads
 # Railways
-railway_nodes_filename = os.path.join(data_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
-railway_ways_filename = os.path.join(data_path, 'Railways', 'tanzania-rail-ways-processed.shp')
+railway_nodes_filename = os.path.join(data_path, 'Infrastructure', 'Railways', 'tanzania-rail-nodes-processed.shp')
+railway_ways_filename = os.path.join(data_path, 'Infrastructure', 'Railways', 'tanzania-rail-ways-processed.shp')
 
 # Create figure
 plt.figure(figsize=(6, 6), dpi=150)
@@ -49,7 +49,9 @@ for record in shpreader.Reader(railway_ways_filename).records():
 # Stations
 xs = []
 ys = []
-for record in shpreader.Reader(railway_ways_filename).records():
+minor_xs = []
+minor_ys = []
+for record in shpreader.Reader(railway_nodes_filename).records():
     node_type = record.attributes['node_type']
     if node_type == 'junction':
         continue
@@ -57,18 +59,28 @@ for record in shpreader.Reader(railway_ways_filename).records():
     geom = record.geometry
     x = geom.x
     y = geom.y
-    xs.append(x)
-    ys.append(y)
+    if node_type == 'minor':
+        minor_xs.append(x)
+        minor_ys.append(y)
+    else:
+        xs.append(x)
+        ys.append(y)
 
     if node_type in ('major', 'transfer', 'final'):
         name = record.attributes['name']
-        if name in ('Arusha', 'Mruazi', 'Morogoro'):
+        if name in ('Arusha', 'Mruazi', 'Morogoro', 'Mpanda', 'Mbeya', 'Tunduma'):
             y -= 0.35
         else:
             y += 0.05
 
-        ax.text(x, y, name, transform=proj_lat_lon, zorder=5)
-ax.scatter(xs, ys, facecolor='#000000', s=3, zorder=4)
+        if name in ('Nakonde (Zambia)', 'Kidatu', 'Isaka', 'Ruvu', 'Kilosa'):
+            align = 'right'
+        else:
+            align = 'left'
+        ax.text(x, y, name, transform=proj_lat_lon, zorder=5, ha=align)
+
+ax.scatter(minor_xs, minor_ys, facecolor='#000000', s=1, zorder=4)
+ax.scatter(xs, ys, facecolor='#000000', s=5, zorder=5)
 
 
 plt.title('Major Railway Stations in Tanzania')
