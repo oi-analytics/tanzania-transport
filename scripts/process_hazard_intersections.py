@@ -22,8 +22,8 @@ def main():
     # Roads
     trunk_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
     regional_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
-    road_csv_output_template = str(os.path.join(inf_path, 'Roads', 'road-{}-{}.csv'))
-    road_shp_output_template = str(os.path.join(inf_path, 'Roads', 'road-{}-{}.shp'))
+    road_csv_output_template = str(os.path.join(inf_path, 'Roads', 'exposure', 'road-{}-{}.csv'))
+    road_shp_output_template = str(os.path.join(inf_path, 'Roads', 'exposure', 'road-{}-{}.shp'))
 
     # Railways
     railway_nodes_filename = os.path.join(inf_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
