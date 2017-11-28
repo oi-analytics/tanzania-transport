@@ -4,6 +4,7 @@ import csv
 import os.path
 
 import fiona
+from fiona.crs import from_epsg
 import shapely.geometry
 from rtree import index
 
@@ -21,6 +22,8 @@ def main():
     # Roads
     trunk_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'trunk_roads_2017.shp')
     regional_road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'region_roads_2017.shp')
+    road_csv_output_template = str(os.path.join(inf_path, 'Roads', 'road-{}-{}.csv'))
+    road_shp_output_template = str(os.path.join(inf_path, 'Roads', 'road-{}-{}.shp'))
 
     # Railways
     railway_nodes_filename = os.path.join(inf_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
@@ -37,34 +40,72 @@ def main():
     all_hazard_details = get_hazard_details(hazard_path)
 
     # filter while testing
-    hazard_details = all_hazard_details[:9]
+    # hazard_details = all_hazard_details[:8]
+    hazard_details = all_hazard_details[:]
 
-    for j, hazard_detail in enumerate(hazard_details):
-        if j != 4:
-            continue
-        print(hazard_detail)
+    for hazard_detail in hazard_details:
         hazards, hazard_index = read_hazard(hazard_detail)
-        for i, road in enumerate(roads(trunk_road_filename, regional_road_filename)):
-            if i != 587:
-                continue
+
+        # Roads
+        csv_out = open(
+            road_csv_output_template.format(hazard_detail['model'], hazard_detail['return']),
+            'w',
+            encoding='utf-8',
+            newline=''
+        )
+        w = csv.writer(csv_out)
+        shp_out = fiona.open(
+            road_shp_output_template.format(hazard_detail['model'], hazard_detail['return']),
+            'w',
+            driver="ESRI Shapefile",
+            crs=from_epsg(4326),
+            schema={
+                'geometry': 'LineString',
+                'properties': {
+                    'fid': 'str',
+                    'from_id': 'str',
+                    'to_id': 'str',
+                    'exposed': 'float'
+                }
+            }
+        )
+
+        for road in roads(trunk_road_filename, regional_road_filename):
             to_check = hazard_index.intersection(road['geom'].bounds)
             exposed_segments = []
             exposed_length = 0
             for fid in to_check:
-                if fid != 726:
-                    continue
                 hazard = hazards[fid]
-                # print(road)
-                print(hazard)
                 intersection = road['geom'].intersection(hazard['geom'])
                 if intersection:
                     exposed_length += line_length(intersection)
                     exposed_segments.append(intersection)
 
             props = road['properties']
-            name = "{}-{}".format(props['STARTENAME'], props['ENDNOENAME'])
+            fid = props['ROADLABEL']
+            from_id = props['STARTENAME']
+            to_id = props['ENDNOENAME']
+            w.writerow((fid, from_id, to_id, exposed_length, ))
             if exposed_length:
-                print(name, exposed_length)
+                for segment in exposed_segments:
+                    shp_out.write({
+                        'type': 'Feature',
+                        'properties': {
+                            'fid': fid,
+                            'from_id': from_id,
+                            'to_id': to_id,
+                            'exposed': exposed_length
+                        },
+                        'geometry': shapely.geometry.mapping(segment)
+                    })
+
+        csv_out.close()
+        shp_out.close()
+
+        # Rail
+        # Airports
+        # Ports
+
 
 
 def read_hazard(detail):
@@ -75,7 +116,10 @@ def read_hazard(detail):
     with fiona.open(detail['filename']) as records:
         for i, record in enumerate(records):
             hazards[i] = record
-            record['geom'] = shapely.geometry.shape(record['geometry'])
+            geom = shapely.geometry.shape(record['geometry'])
+            if not geom.is_valid:
+                geom = geom.buffer(0)
+            record['geom'] = geom
             hazard_index.insert(i, record['geom'].bounds)
     return hazards, hazard_index
 

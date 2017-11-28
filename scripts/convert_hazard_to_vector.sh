@@ -98,6 +98,7 @@ gdal_calc.py \
     # --co="COMPRESS=LZW"
 
 gdal_polygonize.py \
+    -8 \  # use 8-connectedness
     data/tanzania_flood/SSBN_${abbr}_${return}_mask-0.25.tif \
     -q \
     -f "ESRI Shapefile" \
