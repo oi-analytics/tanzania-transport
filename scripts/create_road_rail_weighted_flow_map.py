@@ -7,6 +7,7 @@ import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from shapely.geometry import LineString
 
 from utils import plot_pop, plot_countries, plot_regions
 
@@ -105,6 +106,34 @@ for ind_range, geoms in rail_by_ind_tot.items():
         zorder=2)
 
 # Legend
+# x0 = 28.6
+# x1 = 41.4
+# y0 = 0.5
+# y1 = -12.5
+x_l = 28.8
+x_r = 29.5
+base_y = -9
+for (i, ((nmin, nmax), width)) in enumerate(width_by_range.items()):
+    y = base_y - (i*0.4)
+    line = LineString([(x_l, y), (x_r, y)])
+    ax.add_geometries(
+        [line.buffer(width)],
+        crs=proj_lat_lon,
+        linewidth=0,
+        edgecolor='#000000',
+        facecolor='#000000',
+        zorder=2)
+    if nmax == 100000000:
+        label = '>10000000 t/y'
+    else:
+        label = '{}-{} t/y'.format(nmin, nmax)
+    ax.text(
+        x_r + 0.1,
+        y - 0.15,
+        label,
+        horizontalalignment='left',
+        transform=proj_lat_lon)
+
 legend_handles = [
     mpatches.Patch(color='#d1170a', label='TANROADS Trunk and Regional Roads'),
     mpatches.Patch(color='#33a02c', label='TRL and TAZARA Railways'),
@@ -113,7 +142,7 @@ plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Trunk and Regional Roads in Tanzania')
+plt.title('Annual freight tonnage on road and rail in Tanzania')
 
 
 output_filename = os.path.join(
