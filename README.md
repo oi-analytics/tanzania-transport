@@ -22,12 +22,12 @@ trickier library dependencies.
 conda create --name tanzania python=3.6
 activate tanzania
 
-# Install cartopy and packaged dependencies
-conda install -c conda-forge cartopy
-# Install gdal and library dependencies
-conda install gdal rtree fiona shapely
-# Install remaining packages
-pip install -r requirements.txt
+# Add conda-forge channel for extra packages
+conda config --add channels conda-forge
+
+# Install packages
+conda install --file requirements.txt
+pip install pyshp  # Required for cartopy but not otherwise automatically loaded
 ```
 
 ## Other requirements
