@@ -146,10 +146,13 @@ def main():
 
         if spec['val_col'] == 'model_frequency':
             cmap_name = 'YlOrRd'
+            max_value = 1
         else:
             cmap_name = 'YlOrRd_r'
+            # max_value = max(value for geom, value in data)
+            max_value = 1000
 
-        plot_color_map_network(ax, data, proj_lat_lon, spec['legend_label'], cmap_name)
+        plot_color_map_network(ax, data, proj_lat_lon, spec['legend_label'], cmap_name, max_value)
 
         output_filename = os.path.join(
             base_path, 'figures',
@@ -159,11 +162,10 @@ def main():
         plt.close()
 
 
-def plot_color_map_network(ax, data, proj, label, cmap_name):
+def plot_color_map_network(ax, data, proj, label, cmap_name, max_value):
     """Plot line data to current map
     """
     # Set color_map
-    max_value = max(value for geom, value in data)
     colors = plt.get_cmap(cmap_name)
     color_map = plt.cm.ScalarMappable(cmap=colors, norm=matplotlib.colors.Normalize(vmin=0, vmax=max_value))
 
