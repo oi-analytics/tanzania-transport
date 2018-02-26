@@ -15,6 +15,9 @@ threshold=$1
 
 echo "Processing $threshold"
 
+rm -rf data/tanzania_flood/threshold_$threshold
+mkdir data/tanzania_flood/threshold_$threshold
+
 return_periods=(00002 00005 00025 00050 00100 00250 00500 01000)
 
 
@@ -42,10 +45,11 @@ gdal_polygonize.py \
 
 ogr2ogr \
     -a_srs "EPSG:4326" \
-    data/tanzania_flood/EUWATCH_${return}_mask-${threshold}.shp \
+    data/tanzania_flood/threshold_${threshold}/EUWATCH_${return}_mask-${threshold}.shp \
     data/tanzania_flood/EUWATCH_${return}_vector_mask-${threshold}.shp
 
 rm data/tanzania_flood/EUWATCH_${return}_vector_mask-${threshold}.*
+rm data/tanzania_flood/EUWATCH_${return}_mask-${threshold}.tif
 done # return_periods
 
 # Convert models
@@ -76,10 +80,11 @@ gdal_polygonize.py \
 
 ogr2ogr \
     -a_srs "EPSG:4326" \
-    data/tanzania_flood/${model}_${return}_mask-${threshold}.shp \
+    data/tanzania_flood/threshold_${threshold}/${model}_${return}_mask-${threshold}.shp \
     data/tanzania_flood/${model}_${return}_vector_mask-${threshold}.shp
 
 rm data/tanzania_flood/${model}_${return}_vector_mask-${threshold}.*
+rm data/tanzania_flood/${model}_${return}_mask-${threshold}.tif
 
 done # return_periods
 done # models
@@ -87,8 +92,8 @@ done # models
 # Convert SSBN models
 ssbn_return_periods=(5 10 20 50 75 100 200 250 500 1000)
 
-declare -A models
-models=(
+declare -A ssbnmodels
+ssbnmodels=(
     ["TZ_fluvial_defended"]="FD"
     ["TZ_fluvial_undefended"]="FU"
     ["TZ_pluvial_defended"]="PD"
@@ -97,11 +102,11 @@ models=(
     ["TZ_urban_undefended"]="UU"
 )
 
-for model in ${!models[@]}
+for model in ${!ssbnmodels[@]}
 do
 for return in ${ssbn_return_periods[@]}
 do
-abbr=${models[${model}]}
+abbr=${ssbnmodels[${model}]}
 echo "SSBN_${abbr}_${return}_${threshold}"
 
 gdal_calc.py \
@@ -115,8 +120,9 @@ gdal_calc.py \
     # Could enable compression
     # --co="COMPRESS=LZW"
 
+# -8 means use 8-connectedness
 gdal_polygonize.py \
-    -8 \  # use 8-connectedness
+    -8 \
     data/tanzania_flood/SSBN_${abbr}_${return}_mask-${threshold}.tif \
     -q \
     -f "ESRI Shapefile" \
@@ -124,10 +130,11 @@ gdal_polygonize.py \
 
 ogr2ogr \
     -a_srs "EPSG:4326" \
-    data/tanzania_flood/SSBN_${abbr}_${return}_mask-${threshold}.shp \
+    data/tanzania_flood/threshold_${threshold}/SSBN_${abbr}_${return}_mask-${threshold}.shp \
     data/tanzania_flood/SSBN_${abbr}_${return}_vector_mask-${threshold}.shp
 
 rm data/tanzania_flood/SSBN_${abbr}_${return}_vector_mask-${threshold}.*
+rm data/tanzania_flood/SSBN_${abbr}_${return}_mask-${threshold}.tif
 
 done # return_periods
 done # models
