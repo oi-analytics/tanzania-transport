@@ -23,6 +23,15 @@ import shapely.geometry
 from rasterstats import zonal_stats
 
 def main():
+    # all output printed to STDOUT - start with CSV header
+    print(",".join([
+        'network_element',
+        'sector',
+        'id',
+        'model',
+        'return_period',
+        'flood_depth'
+    ]))
     for network_details in get_network_details():
         with fiona.open(network_details['path']) as network:
             for hazard_details in get_hazard_details():
