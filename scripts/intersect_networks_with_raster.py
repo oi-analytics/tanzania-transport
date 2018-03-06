@@ -18,21 +18,17 @@ import os
 import fiona
 import numpy as np
 import rasterio
-import rasterio.features
 import shapely.geometry
 
+from rasterstats import zonal_stats
 
 def main():
     for network_details in get_network_details():
         with fiona.open(network_details['path']) as network:
             for hazard_details in get_hazard_details():
-                if network_details['node_or_edge'] == 'edge':
-                    intersect_network_edges(network, network_details, hazard_details)
-                else:
-                    intersect_network_points(network, network_details, hazard_details)
+                intersect_network(network, network_details, hazard_details)
 
-
-def intersect_network_edges(network, network_details, hazard_details):
+def intersect_network(network, network_details, hazard_details):
     sector = network_details['sector']
     node_or_edge = network_details['node_or_edge']
     id_key = get_id_key_for_sector(sector)
@@ -41,69 +37,19 @@ def intersect_network_edges(network, network_details, hazard_details):
     model = hazard_details['model']
     rp = hazard_details['r_period']
 
-    with rasterio.open(hazard_path) as dataset:
-        raster_band = dataset.read(1)
-        for element in network:
-            edge = shapely.geometry.shape(element['geometry'])
-            rv_array = rasterize_geom(edge, dataset)
+    all_stats = zonal_stats(network, hazard_path, stats=['max'])
 
-            max_val = np.max(rv_array * raster_band)
-
-            if max_val > 0.25:
-                el_id = element['properties'][id_key]
-                print(",".join([
-                    node_or_edge,
-                    sector,
-                    str(el_id),
-                    model,
-                    str(int(rp)),
-                    str(max_val)
-                ]))
-
-def rasterize_geom(geom, like, all_touched=False):
-    """Convert geom to mask array
-    inspiration from https://github.com/perrygeo/python-rasterstats
-    """
-    geoms = [(geom, 1)]
-    rv_array = rasterio.features.rasterize(
-        geoms,
-        out_shape=like.shape,
-        transform=like.affine,
-        fill=0,
-        all_touched=all_touched)
-    return rv_array
-
-def intersect_network_points(network, network_details, hazard_details):
-    sector = network_details['sector']
-    node_or_edge = network_details['node_or_edge']
-    id_key = get_id_key_for_sector(sector)
-
-    hazard_path = hazard_details['path']
-    model = hazard_details['model']
-    rp = hazard_details['r_period']
-
-    with rasterio.open(hazard_path) as dataset:
-        raster_band = dataset.read(1)
-        for element in network:
-            point = shapely.geometry.shape(element['geometry'])
-            row, col = dataset.index(point.x, point.y)
-
-            try:
-                point_val = raster_band[row, col]
-            except IndexError:
-                continue
-
-            if point_val > 0.25:
-                el_id = element['properties'][id_key]
-                print(",".join([
-                    node_or_edge,
-                    sector,
-                    str(el_id),
-                    model,
-                    str(rp),
-                    str(point_val)
-                ]))
-
+    for stats, element in zip(all_stats, network):
+        if stats['max'] is not None and stats['max'] > 0.25:
+            el_id = element['properties'][id_key]
+            print(",".join([
+                node_or_edge,
+                sector,
+                str(el_id),
+                model,
+                str(int(rp)),
+                str(stats['max'])
+            ]))
 
 def get_network_details():
     base_path = os.path.join(
