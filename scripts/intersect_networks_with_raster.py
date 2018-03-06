@@ -49,7 +49,7 @@ def intersect_network(network, network_details, hazard_details):
     all_stats = zonal_stats(network, hazard_path, stats=['max'])
 
     for stats, element in zip(all_stats, network):
-        if stats['max'] is not None and stats['max'] > 0.25:
+        if stats['max'] is not None and stats['max'] > 0:
             el_id = element['properties'][id_key]
             print(",".join([
                 node_or_edge,
@@ -169,11 +169,11 @@ def get_hazard_details():
                 "inun_dynRout_RP_{}_bias_corr_masked_Tanzania".format(rp),
                 "inun_dynRout_RP_{}_bias_corr_contour_Tanzania.tif".format(rp)
             )
-        details.append({
-            'path': path,
-            'model': model,
-            'r_period': rp
-        })
+            details.append({
+                'path': path,
+                'model': model,
+                'r_period': rp
+            })
 
     # SSBN models have a different set of return periods
     ssbn_rps = [
@@ -188,15 +188,15 @@ def get_hazard_details():
         '500',
         '1000'
     ]
-    ssbn_models = {
-        'TZ_fluvial_defended': 'FD',
-        'TZ_fluvial_undefended': 'FU',
-        'TZ_pluvial_defended': 'PD',
-        'TZ_pluvial_undefended': 'PU',
-        'TZ_urban_defended': 'UD',
-        'TZ_urban_undefended': 'UU'
-    }
-    for model, abbr in ssbn_models.items():
+    ssbn_models = [
+        ('TZ_fluvial_defended', 'FD'),
+        ('TZ_fluvial_undefended', 'FU'),
+        ('TZ_pluvial_defended', 'PD'),
+        ('TZ_pluvial_undefended', 'PU'),
+        ('TZ_urban_defended', 'UD'),
+        ('TZ_urban_undefended', 'UU')
+    ]
+    for model, abbr in ssbn_models:
         for rp in ssbn_rps:
             path = os.path.join(
                 base_path,
@@ -204,11 +204,11 @@ def get_hazard_details():
                 model,
                 "TZ-{}-{}-1.tif".format(abbr, rp)
             )
-        details.append({
-            'path': path,
-            'model': "SSBN_{}".format(abbr),
-            'r_period': int(rp)
-        })
+            details.append({
+                'path': path,
+                'model': "SSBN_{}".format(abbr),
+                'r_period': int(rp)
+            })
 
     return details
 
