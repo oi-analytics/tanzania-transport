@@ -78,18 +78,56 @@ def write_exposure_sparse(exposure):
     path = os.path.join(
         os.path.dirname(__file__), '..', 'data', 'tanzania_flood', 'hazard_network_exposure_sparse.csv'
     )
-    header = ['sector', 'id', 'exposure']
+    header = ['sector', 'id', 'exposure', 'rpmin_curr', 'rpmin_fut', 'model_frequency']
     with open(path, 'w', newline='') as fh:
         w = csv.DictWriter(fh, fieldnames=header)
         w.writeheader()
         for (sector, asset_id), asset_exposure in exposure.items():
+            exp = list(asset_exposure.keys())
             out = {
                 'sector': sector,
                 'id': asset_id,
-                'exposure': list(asset_exposure.keys())
+                'rpmin_curr': rpmin_curr(exp),
+                'rpmin_fut': rpmin_fut(exp),
+                'model_frequency': len(exp),
+                'exposure': exp
             }
             w.writerow(out)
 
+
+def rpmin_curr(exp):
+    return rpmin(exp, [
+        'EUWATCH',
+        'SSBN_FD',
+        'SSBN_FU',
+        'SSBN_PD',
+        'SSBN_PU',
+        'SSBN_UD',
+        'SSBN_UU'
+    ])
+
+
+def rpmin_fut(exp):
+    return rpmin(exp, [
+        'GFDL-ESM2M',
+        'HadGEM2-ES',
+        'IPSL-CM5A-LR',
+        'MIROC-ESM-CHEM',
+        'NorESM1-M'
+    ])
+
+
+def rpmin(exp, models):
+    # exp is list of tuple(model, return_period, (lower, upper))
+    rps = [
+        d[1] for d in exp
+        if d[0] in models
+    ]
+    if len(rps):
+        rp = min(rps)
+    else:
+        rp = None
+    return rp
 
 def get_bounds_for_val(val):
     bounds = get_bounds()
@@ -169,12 +207,12 @@ def get_model_rp_bounds():
         1000
     ]
     ssbn_models = [
-        'FD', # TZ_fluvial_defended
-        'FU', # TZ_fluvial_undefended
-        'PD', # TZ_pluvial_defended
-        'PU', # TZ_pluvial_undefended
-        'UD', # TZ_urban_defended
-        'UU' # TZ_urban_undefended
+        'SSBN_FD', # TZ_fluvial_defended
+        'SSBN_FU', # TZ_fluvial_undefended
+        'SSBN_PD', # TZ_pluvial_defended
+        'SSBN_PU', # TZ_pluvial_undefended
+        'SSBN_UD', # TZ_urban_defended
+        'SSBN_UU' # TZ_urban_undefended
     ]
     for model in ssbn_models:
         for rp in ssbn_rps:
