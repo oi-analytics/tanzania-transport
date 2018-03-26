@@ -1,4 +1,11 @@
 # Generate args for convert_ssbn_bands.sh to run using GNU parallel
+
+# To run with GNU Parallel:
+#   ./run_convert_ssbn_bands.sh | parallel ./convert_ssbn_bands.sh {} {} {} {} {}
+
+# or in two steps:
+#   ./run_convert_ssbn_bands.sh > args.txt
+#   cat args.txt | parallel ./convert_ssbn_bands.sh {} {} {} {} {}
 ssbn_return_periods=(5 10 20 50 75 100 200 250 500 1000)
 
 declare -A ssbnmodels
