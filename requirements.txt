@@ -12,3 +12,5 @@ networkx
 boltons
 geopy
 xlrd
+rasterio
+rasterstats
