@@ -6,10 +6,9 @@ relying on other packages or projects for core functionality.
 Download the `Infrastructure` and `tanzania_flood` folders from OneDrive to a
 directory named `./data` adjacent to this README.
 
-Run each script in `./scripts`, e.g. `python scripts/calculate_rail_length.py`
+The scripts folder contains scripts for preprocessing, analysis and
+postprocessing (plotting and summary statistics).
 
-The intention is that `make all` will generate all outputs, but this is
-currently incomplete.
 
 ## Python requirements
 
