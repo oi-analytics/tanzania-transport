@@ -16,6 +16,7 @@ outputs/*
 
 # Python
 *.pyc
+.ipynb_checkpoints
 
 # Temp
 *~
