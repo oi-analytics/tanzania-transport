@@ -7,19 +7,10 @@ Output rows like:
 - model
 - rp
 - point_val
-
-or instead of point values:
-- band
-- upper
-- lower
 """
 import os
 
 import fiona
-import numpy as np
-import rasterio
-import shapely.geometry
-
 from rasterstats import zonal_stats
 
 def main():
@@ -49,7 +40,7 @@ def intersect_network(network, network_details, hazard_details):
     all_stats = zonal_stats(network, hazard_path, stats=['max'])
 
     for stats, element in zip(all_stats, network):
-        if stats['max'] is not None and stats['max'] > 0:
+        if stats['max'] is not None and stats['max'] > 0 and stats['max'] < 999:
             el_id = element['properties'][id_key]
             print(",".join([
                 node_or_edge,
@@ -63,7 +54,7 @@ def intersect_network(network, network_details, hazard_details):
 def get_network_details():
     base_path = os.path.join(
         os.path.dirname(__file__),
-        '..', 'data', 'Infrastructure'
+        '..', '..', '..', 'data', 'Infrastructure'
     )
     return [
         {
@@ -127,7 +118,7 @@ def get_hazard_details():
     details = []
     base_path = os.path.join(
         os.path.dirname(__file__),
-        '..', 'data', 'tanzania_flood'
+        '..', '..', '..', 'data', 'tanzania_flood'
     )
     rps = [
         '00002',
@@ -189,12 +180,8 @@ def get_hazard_details():
         '1000'
     ]
     ssbn_models = [
-        ('TZ_fluvial_defended', 'FD'),
         ('TZ_fluvial_undefended', 'FU'),
-        ('TZ_pluvial_defended', 'PD'),
-        ('TZ_pluvial_undefended', 'PU'),
-        ('TZ_urban_defended', 'UD'),
-        ('TZ_urban_undefended', 'UU')
+        ('TZ_pluvial_undefended', 'PU')
     ]
     for model, abbr in ssbn_models:
         for rp in ssbn_rps:
