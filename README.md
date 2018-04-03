@@ -1,14 +1,22 @@
-# Tanzania World Bank project
+# Tanzania Transport Risk Analysis
 
 To contain project-specific scripts and workflows, with the intention of
 relying on other packages or projects for core functionality.
 
-Download the `Infrastructure` and `tanzania_flood` folders from OneDrive to a
-directory named `./data` adjacent to this README.
-
 The scripts folder contains scripts for preprocessing, analysis and
 postprocessing (plotting and summary statistics).
 
+Download the `Infrastructure` and `tanzania_flood` folders from OneDrive.
+
+Copy `config.template.json` to `config.json` and edit the paths for data and
+figures, for example:
+
+```json
+{
+    "data_path": "/home/<user>/projects/tanzania-transport-risk/data",
+    "figures_path": "/home/<user>/projects/tanzania-transport-risk/figures"
+}
+```
 
 ## Python requirements
 
