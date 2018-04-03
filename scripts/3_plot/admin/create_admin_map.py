@@ -9,7 +9,7 @@ import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from scripts.utils import load_config, get_tz_axes, save_fig, plot_basemap, plot_basemap_labels
+from scripts.utils import *
 
 config = load_config()
 data_path = config['data_path']
@@ -30,6 +30,7 @@ output_filename = os.path.join(
 ax = get_tz_axes()
 plot_basemap(ax, data_path)
 plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 # Africa, for neighbours map
 proj = ccrs.PlateCarree()

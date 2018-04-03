@@ -6,10 +6,11 @@ import os
 from boltons.iterutils import pairwise
 from geopy.distance import vincenty
 from osgeo import gdal
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LogNorm, ListedColormap, BoundaryNorm
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
 def load_config():
@@ -18,6 +19,32 @@ def load_config():
     with open('config.json', 'r') as config_fh:
         config = json.load(config_fh)
     return config
+
+
+def get_data(filename):
+    """Read in data (as array) and extent of each raster
+    """
+    gdal.UseExceptions()
+    ds = gdal.Open(filename)
+    data = ds.ReadAsArray()
+    data[data < 0] = 0
+
+    gt = ds.GetGeoTransform()
+
+    # get the edge coordinates
+    width = ds.RasterXSize
+    height = ds.RasterYSize
+    xres = gt[1]
+    yres = gt[5]
+
+    xmin = gt[0]
+    xmax = gt[0] + (xres * width)
+    ymin = gt[3] + (yres * height)
+    ymax = gt[3]
+
+    lat_lon_extent = (xmin, xmax, ymax, ymin)
+
+    return data, lat_lon_extent
 
 
 def get_tz_axes():
@@ -31,8 +58,31 @@ def get_tz_axes():
     y0 = 0.5
     y1 = -12.5
     ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
-    ax.background_patch.set_facecolor('#c6e0ff')
+    set_ax_bg(ax)
     return ax
+
+
+def hazard_legend(im, ax):
+    # Add colorbar
+    cbar = plt.colorbar(
+        im, ax=ax, fraction=0.05, pad=0.04, drawedges=False,
+        shrink=0.9, orientation='horizontal',
+        ticks=[0.5, 1, 1.5, 2, 998],
+        boundaries=[0.01,0.5,1,1.5,2,998]
+    )
+    cbar.ax.set_xticklabels(["0.5", "1.0", "1.5", "2.0", ">2.0"])
+    cbar.outline.set_color("none")
+    cbar.ax.set_xlabel('Flood depth (m)')
+
+
+def get_hazard_cmap_norm():
+    cmap = ListedColormap(['none', '#d8efff', '#bfe4ff', '#93d4ff', '#2d8ccb', '#00519e'])
+    norm = BoundaryNorm([0, 0.01, 0.5, 1, 1.5, 2, 998], cmap.N)
+    return cmap, norm
+
+
+def set_ax_bg(ax):
+    ax.background_patch.set_facecolor('#c6e0ff')
 
 
 def save_fig(output_filename):
@@ -123,8 +173,6 @@ def plot_basemap(ax, data_path):
             geom = record.geometry
             ax.add_geometries([geom], crs=proj, edgecolor='#a0a0a0', facecolor='none')
 
-    scale_bar(ax, length=100, location=(0.925,0.02))
-
 
 def plot_basemap_labels(ax, data_path):
     """Plot countries and regions background
@@ -157,7 +205,7 @@ def plot_basemap_labels(ax, data_path):
         {'country': 'Mozambique', 'cx': 37.1, 'cy': -12.3}
     ]
     for neighbour in neighbours:
-        plt.text(
+        ax.text(
             neighbour['cx'],
             neighbour['cy'],
             neighbour['country'].upper(),
@@ -206,7 +254,7 @@ def plot_basemap_labels(ax, data_path):
             else:
                 ha = 'center'
 
-            plt.text(
+            ax.text(
                 cx,
                 cy,
                 name,
@@ -229,7 +277,7 @@ def plot_basemap_labels(ax, data_path):
             if name == 'Lake Victoria':
                 cy -= 0.2
 
-            plt.text(
+            ax.text(
                 cx,
                 cy,
                 name,
@@ -239,7 +287,7 @@ def plot_basemap_labels(ax, data_path):
                 transform=proj)
 
     # Ocean
-    plt.text(
+    ax.text(
         39.8,
         -7.3,
         'Indian Ocean',

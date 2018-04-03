@@ -15,7 +15,7 @@ from matplotlib.legend_handler import HandlerBase
 from matplotlib.image import BboxImage
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from scripts.utils import get_tz_axes, plot_pop, plot_basemap, plot_basemap_labels, load_config, save_fig
+from scripts.utils import *
 
 config = load_config()
 data_path = config['data_path']
@@ -58,6 +58,7 @@ proj_3857 = ccrs.epsg(3857)
 # Background
 plot_basemap(ax, data_path)
 plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 # Roads
 for record in shpreader.Reader(trunk_road_filename).records():
