@@ -1,5 +1,6 @@
 """Shared plotting functions
 """
+import json
 import os
 
 from boltons.iterutils import pairwise
@@ -9,30 +10,280 @@ from matplotlib.colors import LogNorm
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
+import matplotlib.pyplot as plt
 
-
-def plot_countries(ax, data_path):
-    """Plot countries background
+def load_config():
+    """Read config.json
     """
+    with open('config.json', 'r') as config_fh:
+        config = json.load(config_fh)
+    return config
+
+
+def get_tz_axes():
+    """Setup plot figure and return Tanzania axes
+    """
+    plt.figure(figsize=(7, 7), dpi=300)
     proj_lat_lon = ccrs.PlateCarree()
+    ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
+    x0 = 28.6
+    x1 = 41.4
+    y0 = 0.5
+    y1 = -12.5
+    ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
+    ax.background_patch.set_facecolor('#c6e0ff')
+    return ax
 
-    # Natural Earth countries
-    states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
-                                   'ne_10m_admin_0_countries_lakes.shp')
+
+def save_fig(output_filename):
+    plt.savefig(output_filename)
+    plt.savefig(output_filename.replace("png", "svg"))
 
 
-    # Africa, for Tanzania and neighbours
+def plot_basemap(ax, data_path):
+    """Plot countries and regions background
+    """
+    proj = ccrs.PlateCarree()
+
+    states_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_admin_0_countries_lakes.shp'
+    )
+
+    states_over_lakes_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_admin_0_countries.shp'
+    )
+
+    provinces_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_admin_1_states_provinces_lakes.shp'
+    )
+
+    lakes_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_lakes.shp'
+    )
+
+    # Neighbours
     for record in shpreader.Reader(states_filename).records():
-        if record.attributes['CONTINENT'] != 'Africa':
-            continue
+        country_code = record.attributes['ISO_A2']
+        if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
+            geom = record.geometry
+            ax.add_geometries(
+                [geom],
+                crs=proj,
+                edgecolor='white',
+                facecolor='#e0e0e0',
+                zorder=1)
 
+    # Regions
+    for record in shpreader.Reader(provinces_filename).records():
+        country_code = record.attributes['iso_a2']
+        if country_code == 'TZ':
+            geom = record.geometry
+            ax.add_geometries([geom], crs=proj, edgecolor='#ffffff', facecolor='#d2d2d2')
+
+    # Lakes
+    for record in shpreader.Reader(lakes_filename).records():
+        name = record.attributes['name']
         geom = record.geometry
-        ax.add_geometries(
-            [geom],
-            crs=proj_lat_lon,
-            edgecolor='white',
-            facecolor='#efefef',
-            zorder=1)
+
+        if name in (
+                'Lake Victoria',
+                'Lake Tanganyika',
+                'Lake Malawi',
+                'Lake Kivu',
+                'Lake Edward',
+                'Lake Rukwa',
+                'Lake Bunyoni',
+                'Lake Natron',
+                'Lake Manyara',
+                'Lake Lembeni',
+                'Lake Eyasi'):
+            ax.add_geometries(
+                [geom],
+                crs=proj,
+                edgecolor='none',
+                facecolor='#c6e0ff',
+                zorder=1)
+
+    # Tanzania, political border
+    for record in shpreader.Reader(states_over_lakes_filename).records():
+        country_code = record.attributes['ISO_A2']
+        if country_code == 'TZ':
+            geom = record.geometry
+            ax.add_geometries([geom], crs=proj, edgecolor='#a0a0a0', facecolor='none')
+
+    scale_bar(ax, length=100, location=(0.925,0.02))
+
+
+def plot_basemap_labels(ax, data_path):
+    """Plot countries and regions background
+    """
+    proj = ccrs.PlateCarree()
+
+    provinces_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_admin_1_states_provinces_lakes.shp'
+    )
+
+    lakes_filename = os.path.join(
+        data_path,
+        'Infrastructure',
+        'Boundaries',
+        'ne_10m_lakes.shp'
+    )
+
+    # Neighbour labels
+    neighbours = [
+        {'country': 'Kenya', 'cx': 36.9, 'cy': -2.1},
+        {'country': 'Uganda', 'cx': 29.9, 'cy': -0.8},
+        {'country': 'Rwanda', 'cx': 29.5, 'cy': -1.9},
+        {'country': 'Burundi', 'cx': 29.3, 'cy': -3.2},
+        {'country': 'DRC', 'cx': 28.7, 'cy': -5.8},
+        {'country': 'Zambia', 'cx': 32.1, 'cy': -10.5},
+        {'country': 'Malawi', 'cx': 33.5, 'cy': -11.7},
+        {'country': 'Mozambique', 'cx': 37.1, 'cy': -12.3}
+    ]
+    for neighbour in neighbours:
+        plt.text(
+            neighbour['cx'],
+            neighbour['cy'],
+            neighbour['country'].upper(),
+            alpha=0.7,
+            size=9,
+            horizontalalignment='left',
+            transform=proj)
+
+    # Regions
+    nudge_regions = {
+        'Dar-Es-Salaam': (0.2, 0),
+        'Kagera': (0.2, 0),
+        'Kilimanjaro': (0.2, 0),
+        'Manyara': (0.15, 0.1),
+        'Morogoro': (0.25, 0),
+        'Pwani': (0.1, -0.2),
+    }
+
+    no_label_regions = [
+        'Kaskazini-Pemba',
+        'Kaskazini-Unguja',
+        'Kusini-Pemba',
+        'Zanzibar South and Central',
+        'Zanzibar West'
+    ]
+
+    for record in shpreader.Reader(provinces_filename).records():
+        country_code = record.attributes['iso_a2']
+        if country_code == 'TZ':
+            geom = record.geometry
+            centroid = geom.centroid
+            cx = geom.centroid.x
+            cy = geom.centroid.y
+            name = record.attributes['name']
+
+            if name in no_label_regions:
+                continue
+
+            if name in nudge_regions:
+                dx, dy = nudge_regions[name]
+                cx += dx
+                cy += dy
+
+            if name == 'Dar-Es-Salaam':
+                ha = 'left'
+            else:
+                ha = 'center'
+
+            plt.text(
+                cx,
+                cy,
+                name,
+                alpha=0.7,
+                size=8,
+                horizontalalignment=ha,
+                transform=proj)
+
+    # Lakes
+    for record in shpreader.Reader(lakes_filename).records():
+        name = record.attributes['name']
+        geom = record.geometry
+        if name in (
+                'Lake Victoria',
+                'Lake Tanganyika',
+                'Lake Malawi'):
+            cx = geom.centroid.x
+            cy = geom.centroid.y
+            # nudge
+            if name == 'Lake Victoria':
+                cy -= 0.2
+
+            plt.text(
+                cx,
+                cy,
+                name,
+                alpha=0.7,
+                size=7,
+                horizontalalignment='center',
+                transform=proj)
+
+    # Ocean
+    plt.text(
+        39.8,
+        -7.3,
+        'Indian Ocean',
+        alpha=0.7,
+        size=7,
+        horizontalalignment='left',
+        transform=proj)
+
+
+def scale_bar(ax, length=100, location=(0.5, 0.05), linewidth=3):
+    """Draw a scale bar
+
+    Adapted from https://stackoverflow.com/questions/32333870/how-can-i-show-a-km-ruler-on-a-cartopy-matplotlib-plot/35705477#35705477
+
+    Parameters
+    ----------
+    ax : axes
+    length : int
+        length of the scalebar in km.
+    location: tuple
+        center of the scalebar in axis coordinates (ie. 0.5 is the middle of the plot)
+    linewidth: float
+        thickness of the scalebar.
+    """
+    # lat-lon limits
+    llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
+
+    # Transverse mercator for length
+    x = (llx1 + llx0) / 2
+    y = lly0 + (lly1 - lly0) * location[1]
+    tmc = ccrs.TransverseMercator(x, y)
+
+    # Extent of the plotted area in coordinates in metres
+    x0, x1, y0, y1 = ax.get_extent(tmc)
+
+    # Scalebar location coordinates in metres
+    sbx = x0 + (x1 - x0) * location[0]
+    sby = y0 + (y1 - y0) * location[1]
+    bar_xs = [sbx - length * 500, sbx + length * 500]
+
+    # Plot the scalebar and label
+    ax.plot(bar_xs, [sby, sby], transform=tmc, color='k', linewidth=linewidth)
+    ax.text(sbx, sby + 10000, str(length) + ' km', transform=tmc,
+            horizontalalignment='center', verticalalignment='bottom')
 
 
 def plot_pop(plt, ax, data_path):
