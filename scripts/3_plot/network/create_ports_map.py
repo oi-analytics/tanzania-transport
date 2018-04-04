@@ -81,4 +81,13 @@ for record in shpreader.Reader(ports_filename).records():
 
 ax.scatter(xs, ys, facecolor=color, s=7, zorder=3)
 
+# Legend
+legend_handles = [
+    mpatches.Patch(color=color, label='Ports and waterways')
+]
+plt.legend(
+    handles=legend_handles,
+    loc='lower left'
+)
+
 save_fig(output_filename)
