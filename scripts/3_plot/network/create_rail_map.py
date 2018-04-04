@@ -3,90 +3,112 @@
 # pylint: disable=C0103
 import csv
 import os
-
-from utils import plot_pop, plot_countries, plot_regions
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 
-# Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+from collections import defaultdict
 
-# TransNet_Railroads
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
+
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
+
 # Railways
-railway_nodes_filename = os.path.join(data_path, 'Infrastructure', 'Railways', 'tanzania-rail-nodes-processed.shp')
-railway_ways_filename = os.path.join(data_path, 'Infrastructure', 'Railways', 'tanzania-rail-ways-processed.shp')
+railway_nodes_filename = os.path.join(
+    data_path, 'Infrastructure', 'Railways', 'railway_shapefiles',
+    'tanzania-rail-nodes-processed.shp')
+railway_ways_filename = os.path.join(
+    data_path, 'Infrastructure', 'Railways', 'railway_shapefiles',
+    'tanzania-rail-ways-processed.shp')
+
+output_filename = os.path.join(figures_path, 'rail_map.png')
 
 # Create figure
-plt.figure(figsize=(6, 6), dpi=150)
-
+ax = get_tz_axes()
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
 # Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-plot_regions(ax, data_path)
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
+
+geom_by_line = defaultdict(list)
+color_by_line = {
+    'Central': '#fd8f00',
+    'Link': '#538235',
+    'Mpanda': '#ff33cc',
+    'Mwanza': '#5f5f5f',
+    'Singida':'#be9000',
+    'Tanga': '#006fc0',
+    'TAZARA': '#33a02c',
+    'TRL-TAZARA': '#37ce7e'
+}
 
 # Railways
 for record in shpreader.Reader(railway_ways_filename).records():
     geom = record.geometry
-    ax.add_geometries(
-        [geom],
-        crs=proj_lat_lon,
-        edgecolor='#33a02c',
-        facecolor='none',
-        zorder=3)
+    line = record.attributes['line_name']
+    geom_by_line[line].append(geom)
+
+for line, geoms in geom_by_line.items():
+    if line == 'Unknown':
+        continue
+    if line in ('Link', 'Tanga'):
+        ax.add_geometries(
+            geoms,
+            crs=proj_lat_lon,
+            linestyle='dashed',
+            edgecolor=color_by_line[line],
+            facecolor='none',
+            zorder=3)
+    else:
+        ax.add_geometries(
+            geoms,
+            crs=proj_lat_lon,
+            edgecolor=color_by_line[line],
+            facecolor='none',
+            zorder=3)
 
 # Stations
 xs = []
 ys = []
-minor_xs = []
-minor_ys = []
 for record in shpreader.Reader(railway_nodes_filename).records():
-    node_type = record.attributes['node_type']
-    if node_type == 'junction':
-        continue
-
-    geom = record.geometry
-    x = geom.x
-    y = geom.y
-    if node_type == 'minor':
-        minor_xs.append(x)
-        minor_ys.append(y)
-    else:
+    node_type = record.attributes['rail_node_']
+    if node_type in ('major', 'final'):
+        geom = record.geometry
+        x = geom.x
+        y = geom.y
         xs.append(x)
         ys.append(y)
-
-    if node_type in ('major', 'transfer', 'final'):
         name = record.attributes['name']
-        if name in ('Arusha', 'Mruazi', 'Morogoro', 'Mpanda', 'Mbeya', 'Tunduma'):
-            y -= 0.35
+        if name in ('Arusha', 'Isaka', 'Mruazi', 'Morogoro', 'Mpanda', 'Mbeya', 'Tunduma'):
+            y -= 0.3
         else:
-            y += 0.05
+            y += 0.1
+        if name == 'Isaka':
+            x -= 0.05
 
-        if name in ('Nakonde (Zambia)', 'Kidatu', 'Isaka', 'Ruvu', 'Kilosa'):
+        if name in ('Kidatu', 'Isaka', 'Ruvu', 'Kilosa', 'Arusha'):
             align = 'right'
         else:
             align = 'left'
         ax.text(x, y, name, transform=proj_lat_lon, zorder=5, ha=align)
 
-ax.scatter(minor_xs, minor_ys, facecolor='#000000', s=1, zorder=4)
 ax.scatter(xs, ys, facecolor='#000000', s=5, zorder=5)
 
-
-plt.title('Major Railway Stations in Tanzania')
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'rail_map.png'
+# Legend
+legend_handles = [
+    mpatches.Patch(color=color, label=line)
+    for line, color in color_by_line.items()
+]
+plt.legend(
+    handles=legend_handles,
+    loc='lower left'
 )
-plt.savefig(output_filename)
+
+save_fig(output_filename)
