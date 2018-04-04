@@ -36,7 +36,6 @@ route_filename = os.path.join(data_path, 'Infrastructure', 'Roads', 'highlight_r
 plt.figure(figsize=(6, 6), dpi=72)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0, 0.95, 0.95], projection=proj_lat_lon)
 x0 = 32.75
 x1 = 33.2

@@ -34,7 +34,6 @@ for road_filename, output_filename in [(cr_file, co_file), (fr_file, fo_file)]:
     ax = get_tz_axes()
 
     proj_lat_lon = ccrs.PlateCarree()
-    proj_3857 = ccrs.epsg(3857)
 
     # Background
     plot_basemap(ax, data_path)

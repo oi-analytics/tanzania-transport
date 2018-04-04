@@ -60,7 +60,6 @@ ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 set_ax_bg(ax)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 
 # Background
 plot_basemap(ax, data_path)

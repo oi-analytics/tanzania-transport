@@ -25,7 +25,6 @@ output_filename = os.path.join(figures_path, 'airports_map.png')
 ax = get_tz_axes()
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 
 # Background
 plot_basemap(ax, data_path)
