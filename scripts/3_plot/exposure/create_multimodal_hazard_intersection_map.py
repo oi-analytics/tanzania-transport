@@ -64,7 +64,6 @@ train_icon_filename = os.path.join(resource_path, 'train.png')
 plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0.1, 0.95, 0.92], projection=proj_lat_lon)
 zoom_extent = [38.3, 39.3, -4.8, -5.6]
 ax.set_extent(zoom_extent, crs=proj_lat_lon)

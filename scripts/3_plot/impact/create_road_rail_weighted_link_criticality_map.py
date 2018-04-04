@@ -83,7 +83,6 @@ print("figure for road, rerouting")
 plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
 x0 = 28.6
 x1 = 41.4
@@ -165,7 +164,6 @@ print("figure for rail, rerouting")
 plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
 x0 = 28.6
 x1 = 41.4
@@ -247,7 +245,6 @@ print("figure for road, spof")
 plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
 x0 = 28.6
 x1 = 41.4
@@ -328,7 +325,6 @@ print("figure for rail, spof")
 plt.figure(figsize=(6, 6), dpi=150)
 
 proj_lat_lon = ccrs.PlateCarree()
-proj_3857 = ccrs.epsg(3857)
 ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
 x0 = 28.6
 x1 = 41.4
