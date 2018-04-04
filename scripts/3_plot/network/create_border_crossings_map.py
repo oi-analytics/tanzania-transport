@@ -1,11 +1,8 @@
 """Map border crossing nodes
 """
 # pylint: disable=C0103
-import csv
 import os
-import re
-
-from utils import plot_pop, plot_countries, plot_regions
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -16,201 +13,184 @@ from matplotlib.transforms import Bbox, TransformedBbox
 from matplotlib.legend_handler import HandlerBase
 from matplotlib.image import BboxImage
 
-# Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
-inf_path = os.path.join(data_path, 'Infrastructure')
-resource_path = os.path.join(base_path, 'resources')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
-# TZ_TransNet_Roads, clipped to Tanzania
-road_nodes_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'nodes_2017.shp')
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
+
+# Input data
+inf_path = os.path.join(data_path, 'Infrastructure')
+resource_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'resources')
+
+
+# Roads
+road_filename = os.path.join(inf_path, 'Roads', 'road_shapefiles',
+                             'tanroads_nodes_main_all_2017_adj.shp')
 
 # Railways
-railway_nodes_filename = os.path.join(inf_path, 'Railways', 'tanzania-rail-nodes-processed.shp')
+railway_filename = os.path.join(inf_path, 'Railways', 'railway_shapefiles',
+                                'tanzania-rail-nodes-processed.shp')
 
 # Ports
-ports_filename = os.path.join(inf_path, 'Ports', 'TZ_ports.csv')
+ports_filename = os.path.join(inf_path, 'Ports', 'port_shapefiles', 'tz_port_nodes.shp')
 
 # Airports
-airport_filename = os.path.join(inf_path, 'Airports', 'TZ_airport_node_flows.csv')
+airport_filename = os.path.join(inf_path, 'Airports', 'airport_shapefiles', 'tz_od_airport_nodes.shp')
+
+# Output
+output_filename = os.path.join(figures_path, 'border_crossings_map.png')
 
 # Icons
 boat_icon_filename = os.path.join(resource_path, 'boat.png')
 plane_icon_filename = os.path.join(resource_path, 'plane.png')
-train_icon_filename = os.path.join(resource_path, 'train.png')
 
 # Create figure
-plt.figure(figsize=(6, 6), dpi=150)
+ax = get_tz_axes()
 
 proj_lat_lon = ccrs.PlateCarree()
 proj_3857 = ccrs.epsg(3857)
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
 # Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 tz_border_points_info = {
-    'air': [
-        ('Arusha airport', 'HTAR'),
-        ('Dar es Salaam Intl. airport', 'HTDA'),
-        ('Kilimanjaro Intl. airport', 'HTKJ'),
-        ('Mwanza airport', 'HTMW')
-    ],
-    'road': [
-        ('Sirari', 7507),
-        ('Namanga', 6306),
-        ('Kasumulu', 4028),
-        ('Rusumo', 8406),
-        ('Holili', 5822),
-        ('Horohoro', 5313),
-        ('Tunduma', 4012),
-        ('Kabanga', 8529),
-        ('Mutukula', 8407),
-    ],
-    'port': [
-        ('Dar es Salaam port', '1'),
-        ('Mtwara', '2'),
-        ('Tanga port', '3'),
-        ('Mwanza port', '4'),
-        ('Kigoma port', '9'),
-    ],
-    'rail': [
-        ('Tunduma rail station', 'rail_node_16'),
-    ]
+    'air': {
+        'HTAR': 'Arusha ',
+        'HTDA': 'Julius Nyerere',
+        'HTKJ': 'Kilimanjaro ',
+    },
+    'road': {
+         7507: 'Sirari',
+         6306: 'Namanga',
+         4028: 'Kasumulu',
+         8406: 'Rusumo',
+         5822: 'Holili',
+         5313: 'Horohoro',
+         4012: 'Tunduma',
+         8529: 'Kabanga',
+         8407: 'Mutukula',
+    },
+    'port': {
+        'port_1': 'Dar es Salaam port',
+        'port_2': 'Mtwara',
+        'port_3': 'Tanga',
+        'port_4': 'Mwanza',
+        'port_9': 'Kigoma',
+    },
+    'rail': {
+        'rail_node_16': 'Tunduma Station',
+    }
 }
 
-node_buffer = 0.1
+node_buffer = 0.08
 
 # Roads
-road_node_ids = [node_id for node, node_id in tz_border_points_info['road']]
-for record in shpreader.Reader(road_nodes_filename).records():
-    if record.attributes['NodeNumber'] in road_node_ids:
+road_node_ids = tz_border_points_info['road'].keys()
+xs = []
+ys = []
+for record in shpreader.Reader(road_filename).records():
+    id_ = record.attributes['nodenumber']
+    if id_ in road_node_ids:
         geom = record.geometry
-        ax.add_geometries(
-            [geom.buffer(node_buffer)],
-            crs=proj_lat_lon,
-            edgecolor='#d1170a',
-            facecolor='#d1170a',
-            zorder=2)
-
-        x, y, x1, y1 = geom.bounds
+        x = geom.x
+        y = geom.y
+        xs.append(x)
+        ys.append(y)
         ax.text(
             x + node_buffer, y + node_buffer,
-            re.sub(
-                r'\(.*\)',
-                '',
-                record.attributes['NodeName'].title(),
-            ),
+            tz_border_points_info['road'][id_],
             transform=proj_lat_lon,
-            zorder=4
+            zorder=4,
+            size=8
         )
+ax.scatter(xs, ys, facecolor='#d1170a', s=11, zorder=3)
 
 # Railways
-rail_node_ids = [node_id for node, node_id in tz_border_points_info['rail']]
-for record in shpreader.Reader(railway_nodes_filename).records():
-    if record.attributes['id'] in rail_node_ids:
+rail_node_ids = tz_border_points_info['rail'].keys()
+xs = []
+ys = []
+for record in shpreader.Reader(railway_filename).records():
+    id_ = record.attributes['id']
+    if id_ in rail_node_ids:
         geom = record.geometry
-        ax.add_geometries(
-            [geom.buffer(node_buffer)],
-            crs=proj_lat_lon,
-            edgecolor='#33a02c',
-            facecolor='#33a02c',
-            zorder=3)
-
-        x, y, x1, y1 = geom.bounds
-        ax.text(x + node_buffer, y + node_buffer, record.attributes['name'] + ' Station', transform=proj_lat_lon, zorder=4, ha='right')
+        x = geom.x - 0.1
+        y = geom.y
+        xs.append(x)
+        ys.append(y)
+        ax.text(x + node_buffer, y + node_buffer, tz_border_points_info['rail'][id_], transform=proj_lat_lon, zorder=4, ha='right', size=8)
+ax.scatter(xs, ys, facecolor='#33a02c', s=11, zorder=3)
 
 # Ports
 ferry_im = plt.imread(boat_icon_filename)
-port_node_ids = [node_id for node, node_id in tz_border_points_info['port']]
-with open(ports_filename, 'r', encoding="utf-8-sig") as fh:
-    r = csv.DictReader(fh)
-    for record in r:
-        if record['id'] in port_node_ids:
-            x = float(record['longitude'])
-            y = float(record['latitude'])
-            offset = 0.15
-            img_extent = (
-                x - offset,
-                x + offset,
-                y - offset,
-                y + offset
-            )
-            ax.imshow(ferry_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=4)
+port_node_ids = tz_border_points_info['port'].keys()
+for record in shpreader.Reader(ports_filename).records():
+    id_ = record.attributes['id']
+    if id_ in port_node_ids:
+        geom = record.geometry
+        x = geom.x
+        y = geom.y
+        offset = 0.15
+        img_extent = (
+            x - offset,
+            x + offset,
+            y - offset,
+            y + offset
+        )
+        ax.imshow(ferry_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=4)
 
-            ax.text(x + offset, y + offset, record['name'], transform=proj_lat_lon, zorder=4)
+        ax.text(x + offset/2, y + offset/2, tz_border_points_info['port'][id_], transform=proj_lat_lon, zorder=4, size=8)
 
 # Airports
 plane_im = plt.imread(plane_icon_filename)
-air_node_ids = [node_id for node, node_id in tz_border_points_info['air']]
-with open(airport_filename, 'r') as airports_file:
-    reader = csv.DictReader(airports_file)
-    for line in reader:
-        if line['ident'] in air_node_ids:
-            x = float(line['longitude_deg'])
-            y = float(line['latitude_deg'])
+air_node_ids = tz_border_points_info['air'].keys()
 
-            # Offset defines icon size
-            offset = 0.15
+plane_im = plt.imread(plane_icon_filename)
+for record in shpreader.Reader(airport_filename).records():
+    geom = record.geometry
+    x = geom.x
+    y = geom.y
 
-            # Nudge airports which are next to ports
-            if line['name'] in ('Bukoba Airport', 'Julius Nyerere International Airport', 'Mtwara Airport'):
-                x -= 0.2
-            elif line['name'] in ('Musoma Airport', 'Kigoma Airport'):
-                x += 0.2
-            elif line['name'] == 'Mwanza Airport':
-                x += 0.2
-                y -= 0.1
+    # Offset defines icon size
+    offset = 0.15
 
-            img_extent = (
-                x - offset,
-                x + offset,
-                y - offset,
-                y + offset
-            )
-            ax.imshow(plane_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=5)
+    name = record.attributes['name']
+    name = name.replace(' Airport', '')
+    name = name.replace(' International', '')
 
-            name = line['name']
-            if name == 'Mwanza Airport':
-                continue
+    id_ = record.attributes['ident']
+    if id_ not in air_node_ids:
+        continue
 
-            if name in [
-                'Julius Nyerere International Airport',
-                'Kilimanjaro International Airport',
-                'Abeid Amani Karume International Airport',
-                'Mbeya Airport',
-                'Pemba Airport',
-                ]:
-                y -= 0.35
-            else:
-                y += 0.05
+    # Nudge airports which are next to ports
+    if name == 'Julius Nyerere':
+        x -= 0.2
 
-            if name in [
-                'Abeid Amani Karume International Airport',
-                'Mtwara Airport',
-                'Julius Nyerere International Airport',
-                'Lake Manyara Airport',
-                'Mafia Island Airport',
-                'Pemba Airport',
-                'Tanga Airport',
-                'Songwe Airport',
-                'Dodoma Airport'
-                ]:
-                x -= 0.05
-                align = 'right'
-            else:
-                x += 0.05
-                align = 'left'
+    img_extent = (
+        x - offset,
+        x + offset,
+        y - offset,
+        y + offset
+    )
+    ax.imshow(plane_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=5)
 
-            name = name.replace(' Airport', '')
-            name = name.replace(' International', '')
-            ax.text(x, y, name, transform=proj_lat_lon, zorder=4, ha=align)
+    if name == 'Arusha':
+        y += 0.07
+        x += 0.05
+        align = 'right'
+    elif name == 'Julius Nyerere':
+        y -= 0.21
+        x -= 0.05
+        align = 'right'
+    else:
+        y -= 0.21
+        x += 0.05
+        align = 'right'
+
+    ax.text(x, y, tz_border_points_info['air'][id_], transform=proj_lat_lon, zorder=4, ha=align, size=8)
 
 # Legend
 class HandlerImage(HandlerBase):
@@ -254,12 +234,4 @@ plt.legend(
     },
     loc='lower left')
 
-plt.title('Major Border Crossings in Tanzania')
-
-
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'border_crossings_map.png'
-)
-plt.savefig(output_filename)
+save_fig(output_filename)

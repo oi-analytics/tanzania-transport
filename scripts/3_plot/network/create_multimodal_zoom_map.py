@@ -26,7 +26,7 @@ inf_path = os.path.join(data_path, 'Infrastructure')
 resource_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'resources')
 
 # TZ_TransNet_Roads, clipped to Tanzania
-trunk_road_filename = os.path.join(inf_path, 'Roads', 'road_shapefiles', 'tanroads_main_all_2017_adj.shp')
+trunk_road_filename = os.path.join(inf_path, 'Roads', 'road_shapefiles', 'tanroads_nodes_main_all_2017_adj.shp')
 
 # Railways
 railway_nodes_filename = os.path.join(inf_path, 'Railways', 'railway_shapefiles', 'tanzania-rail-nodes-processed.shp')
