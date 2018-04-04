@@ -178,6 +178,7 @@ def plot_basemap_labels(ax, data_path):
     """Plot countries and regions background
     """
     proj = ccrs.PlateCarree()
+    extent = ax.get_extent()
 
     provinces_filename = os.path.join(
         data_path,
@@ -205,14 +206,16 @@ def plot_basemap_labels(ax, data_path):
         {'country': 'Mozambique', 'cx': 37.1, 'cy': -12.3}
     ]
     for neighbour in neighbours:
-        ax.text(
-            neighbour['cx'],
-            neighbour['cy'],
-            neighbour['country'].upper(),
-            alpha=0.7,
-            size=9,
-            horizontalalignment='left',
-            transform=proj)
+        x = neighbour['cx']
+        y = neighbour['cy']
+        if within_extent(x, y, extent):
+            ax.text(
+                x, y,
+                neighbour['country'].upper(),
+                alpha=0.7,
+                size=9,
+                horizontalalignment='left',
+                transform=proj)
 
     # Regions
     nudge_regions = {
@@ -254,14 +257,15 @@ def plot_basemap_labels(ax, data_path):
             else:
                 ha = 'center'
 
-            ax.text(
-                cx,
-                cy,
-                name,
-                alpha=0.7,
-                size=8,
-                horizontalalignment=ha,
-                transform=proj)
+            if within_extent(cx, cy, extent):
+                ax.text(
+                    cx,
+                    cy,
+                    name,
+                    alpha=0.7,
+                    size=8,
+                    horizontalalignment=ha,
+                    transform=proj)
 
     # Lakes
     for record in shpreader.Reader(lakes_filename).records():
@@ -277,24 +281,33 @@ def plot_basemap_labels(ax, data_path):
             if name == 'Lake Victoria':
                 cy -= 0.2
 
-            ax.text(
-                cx,
-                cy,
-                name,
-                alpha=0.7,
-                size=7,
-                horizontalalignment='center',
-                transform=proj)
+            if within_extent(cx, cy, extent):
+                ax.text(
+                    cx,
+                    cy,
+                    name,
+                    alpha=0.7,
+                    size=7,
+                    horizontalalignment='center',
+                    transform=proj)
 
     # Ocean
-    ax.text(
-        39.8,
-        -7.3,
-        'Indian Ocean',
-        alpha=0.7,
-        size=7,
-        horizontalalignment='left',
-        transform=proj)
+    cx = 39.8
+    cy = -7.3
+    if within_extent(cx, cy, extent):
+        ax.text(
+            cx,
+            cy,
+            'Indian Ocean',
+            alpha=0.7,
+            size=7,
+            horizontalalignment='left',
+            transform=proj)
+
+
+def within_extent(x, y, extent):
+    xmin, xmax, ymin, ymax = extent
+    return xmin < x and x < xmax and ymin < y and y < ymax
 
 
 def scale_bar(ax, length=100, location=(0.5, 0.05), linewidth=3):
