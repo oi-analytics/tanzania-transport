@@ -2,6 +2,7 @@
 """
 # pylint: disable=C0103
 import os
+import sys
 
 from osgeo import gdal
 
@@ -10,21 +11,15 @@ import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Input data
-base_path = os.path.join(
-    os.path.dirname(__file__),
-    '..'
-)
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
-data_path = os.path.join(
-    base_path,
-    'data'
-)
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
 
-hazard_base_path = os.path.join(
-    data_path,
-    'tanzania_flood'
-)
+hazard_base_path = os.path.join(data_path, 'tanzania_flood')
+output_filename = os.path.join(figures_path, 'flood_depth_histograms.png')
 
 # List of dicts, each with {return_period, filename, model, period}
 hazard_file_details = []
@@ -72,34 +67,6 @@ for model in models:
             "period": "2030-2069"
         })
 
-
-def get_data(filename):
-    """Read in data (as array) and extent of each raster
-    """
-    gdal.UseExceptions()
-    ds = gdal.Open(filename)
-    data = ds.ReadAsArray()
-    data[data < 0] = 0
-
-    gt = ds.GetGeoTransform()
-
-    # get the edge coordinates
-    width = ds.RasterXSize
-    height = ds.RasterYSize
-    xres = gt[1]
-    yres = gt[5]
-
-    xmin = gt[0]
-    xmax = gt[0] + (xres * width)
-    ymin = gt[3] + (yres * height)
-    ymax = gt[3]
-
-    lat_lon_extent = (xmin, xmax, ymax, ymin)
-
-    return data, lat_lon_extent
-
-
-
 # Create figure
 fig, axes = plt.subplots(
     nrows=1+len(models),
@@ -142,9 +109,4 @@ ax_list = list(axes.flat)
 plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.04, rect=(0.05, 0, 1, 1))
 
 # Save
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'flood_depth_histograms.png'
-)
-plt.savefig(output_filename)
+save_fig(output_filename)
