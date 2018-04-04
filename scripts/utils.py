@@ -330,7 +330,7 @@ def scale_bar(ax, length=100, location=(0.5, 0.05), linewidth=3):
 
     # Plot the scalebar and label
     ax.plot(bar_xs, [sby, sby], transform=tmc, color='k', linewidth=linewidth)
-    ax.text(sbx, sby + 10000, str(length) + ' km', transform=tmc,
+    ax.text(sbx, sby + 10*length, str(length) + ' km', transform=tmc,
             horizontalalignment='center', verticalalignment='bottom')
 
 
