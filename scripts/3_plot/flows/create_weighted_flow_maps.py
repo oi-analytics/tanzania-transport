@@ -102,7 +102,7 @@ sector_colors = {
 }
 proj_lat_lon = ccrs.PlateCarree()
 
-for scenario in ["current", "future"]:
+for scenario in ["current_own_range", "current", "future"]:
     for legend_label, column in plots:
         for sectors in sector_groups:
             print(scenario, column, sectors)
@@ -110,29 +110,49 @@ for scenario in ["current", "future"]:
             plot_basemap(ax, data_path)
             plot_border_crossings(ax, nodes, resource_path, show_labels=False)
 
-            min_weight = round_sf(min(
-                min(
-                    record.attributes[column]
-                    for record
-                    in stats[(sector, scen)]
-                )
-                for sector in sectors
-                for scen in ["current", "future"]
-            ))
-            max_weight = round_sf(max(
-                max(
-                    record.attributes[column]
-                    for record
-                    in stats[(sector, scen)]
-                )
-                for sector in sectors
-                for scen in ["current", "future"]
-            ))
+            if scenario == "current_own_range":
+                min_weight = round_sf(min(
+                    min(
+                        record.attributes[column]
+                        for record
+                        in stats[(sector, "current")]
+                    )
+                    for sector in sectors
+                ))
+                max_weight = round_sf(max(
+                    max(
+                        record.attributes[column]
+                        for record
+                        in stats[(sector, "current")]
+                    )
+                    for sector in sectors
+                ))
+
+            else:
+                # consider both current and future
+                min_weight = round_sf(min(
+                    min(
+                        record.attributes[column]
+                        for record
+                        in stats[(sector, scen)]
+                    )
+                    for sector in sectors
+                    for scen in ["current", "future"]
+                ))
+                max_weight = round_sf(max(
+                    max(
+                        record.attributes[column]
+                        for record
+                        in stats[(sector, scen)]
+                    )
+                    for sector in sectors
+                    for scen in ["current", "future"]
+                ))
             print(min_weight, max_weight)
 
             # generate weight bins
             width_by_range = OrderedDict()
-            n_steps = 8
+            n_steps = 9
             width_step = 0.01
 
             mins = np.linspace(min_weight, max_weight, n_steps)
@@ -146,13 +166,20 @@ for scenario in ["current", "future"]:
             for i, (min_, max_) in enumerate(zip(mins, maxs)):
                 width_by_range[(min_, max_)] = (i+1) * width_step
 
+
+            # for geom lookup
+            if scenario == "current_own_range":
+                scenario_key = "current"
+            else:
+                scenario_key = scenario
+
             for sector in sectors:
                 # assign geoms to weight bins
                 geoms_by_range = {}
                 for value_range in width_by_range:
                     geoms_by_range[value_range] = []
 
-                for record in stats[(sector, scenario)]:
+                for record in stats[(sector, scenario_key)]:
                     val = record.attributes[column]
                     geom = record.geometry
                     for nmin, nmax in geoms_by_range:
