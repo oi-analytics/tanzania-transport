@@ -7,6 +7,9 @@ from boltons.iterutils import pairwise
 from geopy.distance import vincenty
 from osgeo import gdal
 from matplotlib.colors import LogNorm, ListedColormap, BoundaryNorm
+from matplotlib.image import BboxImage
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.transforms import Bbox, TransformedBbox
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -464,3 +467,31 @@ def line_length(line, ellipsoid='WGS-84'):
         vincenty(a, b, ellipsoid=ellipsoid).meters
         for a, b in pairwise(line.coords)
     )
+
+
+class HandlerImage(HandlerBase):
+    """Use image in legend
+
+    Adapted from https://stackoverflow.com/questions/42155119/replace-matplotlib-legends-labels-with-image
+    """
+    def __init__(self, path, space=15, offset=5):
+        self.space = space
+        self.offset = offset
+        self.image_data = plt.imread(path)
+        super(HandlerImage, self).__init__()
+
+    def create_artists(self, legend, orig_handle,
+                       xdescent, ydescent, width, height, fontsize, trans):
+        scale = 1.5
+        bb = Bbox.from_bounds(
+            xdescent + self.offset,
+            ydescent,
+            height * self.image_data.shape[1] / self.image_data.shape[0] * scale,
+            height * scale)
+
+        tbb = TransformedBbox(bb, trans)
+        image = BboxImage(tbb)
+        image.set_data(self.image_data)
+
+        self.update_prop(image, orig_handle, legend)
+        return [image]

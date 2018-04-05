@@ -9,10 +9,6 @@ import cartopy.io.shapereader as shpreader
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-from matplotlib.transforms import Bbox, TransformedBbox
-from matplotlib.legend_handler import HandlerBase
-from matplotlib.image import BboxImage
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from scripts.utils import *
 
@@ -192,33 +188,6 @@ for record in shpreader.Reader(airport_filename).records():
     ax.text(x, y, tz_border_points_info['air'][id_], transform=proj_lat_lon, zorder=4, ha=align, size=8)
 
 # Legend
-class HandlerImage(HandlerBase):
-    """Use image in legend
-
-    Adapted from https://stackoverflow.com/questions/42155119/replace-matplotlib-legends-labels-with-image
-    """
-    def __init__(self, path, space=15, offset=5):
-        self.space = space
-        self.offset = offset
-        self.image_data = plt.imread(path)
-        super(HandlerImage, self).__init__()
-
-    def create_artists(self, legend, orig_handle,
-                       xdescent, ydescent, width, height, fontsize, trans):
-        scale = 1.5
-        bb = Bbox.from_bounds(
-            xdescent + self.offset,
-            ydescent,
-            height * self.image_data.shape[1] / self.image_data.shape[0] * scale,
-            height * scale)
-
-        tbb = TransformedBbox(bb, trans)
-        image = BboxImage(tbb)
-        image.set_data(self.image_data)
-
-        self.update_prop(image, orig_handle, legend)
-        return [image]
-
 boat_handle = mpatches.Patch()
 plane_handle = mpatches.Patch()
 road_handle = mpatches.Patch(color='#d1170a')
