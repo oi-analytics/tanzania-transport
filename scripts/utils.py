@@ -3,6 +3,8 @@
 import json
 import os
 
+from math import log10, floor
+
 from boltons.iterutils import pairwise
 from geopy.distance import vincenty
 from osgeo import gdal
@@ -652,3 +654,15 @@ def plot_border_crossings(ax, nodes, resource_path, show_labels=True):
                 x, y,
                 label,
                 transform=proj_lat_lon, zorder=4, ha=align, size=8)
+
+def round_sf(x, places=1):
+    """Round number to significant figures
+    """
+    if x == 0:
+        return 0
+    sign = x / abs(x)
+    x = abs(x)
+    exp = floor(log10(x)) + 1
+    shift = 10 ** (exp - places)
+    rounded = round(x / shift) * shift
+    return rounded * sign
