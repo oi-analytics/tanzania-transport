@@ -2,6 +2,7 @@
 """
 # pylint: disable=C0103
 import os
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -11,7 +12,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import LineString
 
-from utils import plot_pop, plot_countries, plot_regions
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
 def main():
     """Plot maps
@@ -32,13 +34,14 @@ def main():
         },
     ]
 
-    base_path = os.path.join(os.path.dirname(__file__), '..')
-    data_path = os.path.join(base_path, 'data')
+    config = load_config()
+    data_path = config['data_path']
+    figures_path = config['figures_path']
 
     road_filename = os.path.join(
         data_path, 'Analysis_results', 'spof_localfailure_results', 'tz_road_spof_geom.shp')
     output_filename = os.path.join(
-        base_path, 'figures',
+        figures_path,
         'mpof_scenarios_map.png')
 
     x0 = 28.6
@@ -62,9 +65,7 @@ def main():
 
         ax.set_title("Scenario {}".format(scenario['name']))
 
-        plot_countries(ax, data_path)
-        plot_pop(plt, ax, data_path)
-        plot_regions(ax, data_path)
+        plot_basemap(ax, data_path)
 
         highlight = []
         other = []
@@ -101,8 +102,6 @@ def main():
                 ["Affected roads", "Other TANROADS trunk and regional roads"],
                 loc='lower left')
 
-
-    plt.suptitle('Multiple points of failure scenarios for the road network')
     plt.tight_layout(pad=0.3, h_pad=0.3, w_pad=0.02, rect=(0, 0, 1, 1))
 
     plt.savefig(output_filename)
