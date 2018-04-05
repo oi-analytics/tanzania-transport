@@ -4,19 +4,24 @@ import csv
 import json
 import math
 import os
-from collections import defaultdict
+import sys
 
-from utils import plot_pop, plot_countries, plot_regions
+from collections import defaultdict
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 import matplotlib.colors
 
-# Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
+
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
 inf_path = os.path.join(data_path, 'Infrastructure')
+
+output_filename = os.path.join(figures_path, 'commodity_flow_map.png')
 
 # Roads
 road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'tanroads_all_2017.shp')
@@ -38,8 +43,6 @@ fig, axes = plt.subplots(
     subplot_kw=dict(projection=proj_lat_lon),
     figsize=(10, 3),
     dpi=150)
-
-plt.suptitle('Commodity flows in Tanzania')
 
 road_links = {}
 for record in shpreader.Reader(road_filename).records():
@@ -77,8 +80,7 @@ for i, ax in enumerate(axes):
     ax.set_extent(extent, crs=proj_lat_lon)
 
     # Background
-    plot_countries(ax, data_path)
-    plot_pop(plt, ax, data_path)
+    plot_basemap(ax, data_path)
 
     commodity_name = commodities_of_interest[i]
 
@@ -109,9 +111,4 @@ cbar = plt.colorbar(color_map, ax=ax_list, fraction=0.05, pad=0.01, drawedges=Fa
 cbar.outline.set_color("none")
 cbar.ax.set_ylabel('Tonnes of commodity flow')
 
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'commodity_flow_map.png'
-)
 plt.savefig(output_filename)
