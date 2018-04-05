@@ -2,6 +2,7 @@
 """
 # pylint: disable=C0103
 import os
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -10,12 +11,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import LineString
 
-from utils import plot_pop, plot_countries, plot_regions
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
 def main():
     # Input data
-    base_path = os.path.join(os.path.dirname(__file__), '..')
-    data_path = os.path.join(base_path, 'data')
+    config = load_config()
+    data_path = config['data_path']
+    figures_path = config['figures_path']
 
     states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
                                 'ne_10m_admin_0_countries_lakes.shp')
@@ -42,8 +45,7 @@ def main():
         for record in shpreader.Reader(road_filename).records()
     ]
     output_filename = os.path.join(
-        base_path,
-        'figures',
+        figures_path,
         'weighted_road_industry_total_map.png'
     )
     plot_weighted_network(
@@ -57,8 +59,7 @@ def main():
         for record in shpreader.Reader(rail_filename).records()
     ]
     output_filename = os.path.join(
-        base_path,
-        'figures',
+        figures_path,
         'weighted_rail_industry_total_map.png'
     )
     plot_weighted_network(
@@ -96,8 +97,7 @@ def main():
     }
 
     output_filename = os.path.join(
-        base_path,
-        'figures',
+        figures_path,
         'weighted_road_path_centrality_map.png'
     )
     plot_weighted_network(
@@ -134,8 +134,7 @@ def main():
     }
 
     output_filename = os.path.join(
-        base_path,
-        'figures',
+        figures_path,
         'weighted_road_incr_cost_map.png'
     )
     plot_weighted_network(
@@ -159,9 +158,9 @@ def plot_weighted_network(data_path, width_by_range, data,
     ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
     # Background
-    plot_countries(ax, data_path)
-    plot_pop(plt, ax, data_path)
-    plot_regions(ax, data_path)
+    plot_basemap(ax, data_path)
+    plot_basemap_labels(ax, data_path)
+    scale_bar(ax, length=100, location=(0.925,0.02))
 
     # Grouped geoms to plot
     to_plot = {}
