@@ -3,6 +3,7 @@ over road and rail networks.
 """
 # pylint: disable=C0103
 import os
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -10,11 +11,13 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 
-from utils import plot_pop, plot_countries, plot_regions
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
 # Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
 
 states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
                                'ne_10m_admin_0_countries_lakes.shp')
@@ -26,6 +29,8 @@ road_filename = os.path.join(
 # Rail
 rail_filename = os.path.join(
     data_path, 'Analysis_results', 'spof_localfailure_results', 'tz_rail_spof_geom.shp')
+
+proj_lat_lon = ccrs.PlateCarree()
 
 # All roads
 roads_by_incr_fact = {
@@ -79,21 +84,10 @@ for record in shpreader.Reader(rail_filename).records():
 
 # Create figure for road, just rerouting
 print("figure for road, rerouting")
-
-plt.figure(figsize=(6, 6), dpi=150)
-
-proj_lat_lon = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
-
-# Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-plot_regions(ax, data_path)
+ax = get_tz_axes()
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 for ind_range, geoms in roads_by_incr_fact.items():
     if ind_range[1] is None:
@@ -145,12 +139,9 @@ plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Route increase factor for road in Tanzania')
-
 
 output_filename = os.path.join(
-    base_path,
-    'figures',
+    figures_path,
     'weighted_road_increase_factor_map.png'
 )
 plt.savefig(output_filename)
@@ -159,22 +150,10 @@ plt.close()
 
 
 # Create figure for rail, just rerouting
-print("figure for rail, rerouting")
-
-plt.figure(figsize=(6, 6), dpi=150)
-
-proj_lat_lon = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
-
-# Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-plot_regions(ax, data_path)
+ax = get_tz_axes()
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925, 0.02))
 
 for ind_range, geoms in rail_by_incr_fact.items():
     if ind_range[1] is None:
@@ -226,12 +205,9 @@ plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Route increase factor for rail in Tanzania')
-
 
 output_filename = os.path.join(
-    base_path,
-    'figures',
+    figures_path,
     'weighted_rail_increase_factor_map.png'
 )
 plt.savefig(output_filename)
@@ -241,21 +217,10 @@ plt.close()
 
 # Create figure for road, spof
 print("figure for road, spof")
-
-plt.figure(figsize=(6, 6), dpi=150)
-
-proj_lat_lon = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
-
-# Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-plot_regions(ax, data_path)
+ax = get_tz_axes()
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 for ind_range, geoms in roads_by_incr_fact.items():
     if ind_range[1] is None:
@@ -307,12 +272,9 @@ plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Single points of failure for road in Tanzania')
-
 
 output_filename = os.path.join(
-    base_path,
-    'figures',
+    figures_path,
     'weighted_road_spof_map.png'
 )
 plt.savefig(output_filename)
@@ -322,20 +284,10 @@ plt.close()
 
 # Create figure for rail, spof
 print("figure for rail, spof")
-plt.figure(figsize=(6, 6), dpi=150)
-
-proj_lat_lon = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
-
-# Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-plot_regions(ax, data_path)
+ax = get_tz_axes()
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 for ind_range, geoms in rail_by_incr_fact.items():
     if ind_range[1] is None:
@@ -387,12 +339,9 @@ plt.legend(
     handles=legend_handles,
     loc='lower left'
 )
-plt.title('Single points of failure for rail in Tanzania')
-
 
 output_filename = os.path.join(
-    base_path,
-    'figures',
+    figures_path,
     'weighted_rail_spof_map.png'
 )
 plt.savefig(output_filename)
