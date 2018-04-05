@@ -495,3 +495,160 @@ class HandlerImage(HandlerBase):
 
         self.update_prop(image, orig_handle, legend)
         return [image]
+
+def get_border_points():
+    """Return id=>label dictionary of border crossing points
+    """
+    return {
+        'air': {
+            'HTAR': 'Arusha',
+            'HTDA': 'Julius Nyerere',
+            'HTKJ': 'Kilimanjaro ',
+        },
+        'road': {
+            7507: 'Sirari',
+            6306: 'Namanga',
+            4028: 'Kasumulu',
+            8406: 'Rusumo',
+            5822: 'Holili',
+            5313: 'Horohoro',
+            4012: 'Tunduma',
+            8529: 'Kabanga',
+            8407: 'Mutukula',
+        },
+        'port': {
+            'port_1': 'Dar es Salaam port',
+            'port_2': 'Mtwara',
+            'port_3': 'Tanga',
+            'port_4': 'Mwanza',
+            'port_9': 'Kigoma',
+        },
+        'rail': {
+            'rail_node_16': 'Tunduma Station',
+        }
+    }
+
+
+def read_border_geoms_and_labels(sector, filename):
+    """Read filename, returning (geom, label) tuples for each border point in
+    border_points_info for given sector
+    """
+    border_points_info = get_border_points()
+    nodes = []
+    id_by_sector = {
+        "road": "nodenumber",
+        "rail": "id",
+        "port": "id",
+        "air": "ident",
+    }
+    for record in shpreader.Reader(filename).records():
+        id_ = record.attributes[id_by_sector[sector]]
+        if id_ in border_points_info[sector]:
+            nodes.append((record.geometry, border_points_info[sector][id_]))
+    return nodes
+
+
+def plot_border_crossings(ax, nodes, resource_path, show_labels=True):
+    """Plot airport, port, road and rail border crossings
+    """
+    proj_lat_lon = ccrs.PlateCarree()
+    # Icons
+    boat_icon_filename = os.path.join(resource_path, 'boat.png')
+    ferry_im = plt.imread(boat_icon_filename)
+    plane_icon_filename = os.path.join(resource_path, 'plane.png')
+    plane_im = plt.imread(plane_icon_filename)
+
+    node_buffer = 0.08
+
+    # Roads
+    xs = []
+    ys = []
+    for geom, label in nodes["road"]:
+        xs.append(geom.x)
+        ys.append(geom.y)
+        if show_labels:
+            ax.text(
+                geom.x + node_buffer, geom.y + node_buffer,
+                label,
+                transform=proj_lat_lon,
+                zorder=4,
+                size=8
+            )
+    ax.scatter(xs, ys, facecolor='#d1170a', s=11, zorder=3)
+
+    # Railways
+    xs = []
+    ys = []
+    for geom, label in nodes["rail"]:
+        x = geom.x - 0.1
+        xs.append(x)
+        ys.append(geom.y)
+        if show_labels:
+            ax.text(
+                x + node_buffer,  geom.y + node_buffer,
+                label,
+                transform=proj_lat_lon, zorder=4, ha='right', size=8
+            )
+    ax.scatter(xs, ys, facecolor='#33a02c', s=11, zorder=3)
+
+    # Offset defines icon size
+    offset = 0.15
+
+    # Ports
+    for geom, label in nodes["port"]:
+        x = geom.x
+        y = geom.y
+
+        img_extent = (
+            x - offset,
+            x + offset,
+            y - offset,
+            y + offset
+        )
+        ax.imshow(
+            ferry_im,
+            origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=4)
+
+        if show_labels:
+            ax.text(
+                x + offset/2, y + offset/2,
+                label,
+                transform=proj_lat_lon, zorder=4, size=8)
+
+    # Airports
+    for geom, label in nodes["air"]:
+        x = geom.x
+        y = geom.y
+
+        # Nudge airports which are next to ports
+        if label == 'Julius Nyerere':
+            x -= 0.2
+
+        img_extent = (
+            x - offset,
+            x + offset,
+            y - offset,
+            y + offset
+        )
+        ax.imshow(
+            plane_im,
+            origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=5)
+
+        if show_labels:
+            if label == 'Arusha':
+                y += 0.07
+                x += 0.05
+                align = 'right'
+            elif label == 'Julius Nyerere':
+                y -= 0.21
+                x -= 0.05
+                align = 'right'
+            else:
+                y -= 0.21
+                x += 0.05
+                align = 'right'
+
+            ax.text(
+                x, y,
+                label,
+                transform=proj_lat_lon, zorder=4, ha=align, size=8)
