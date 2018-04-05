@@ -1,40 +1,40 @@
 """Map transport network (initially roads) with commodity flows
 """
-import csv
+# pylint: disable=C0103
 import math
 import os
-
-from utils import plot_pop, plot_countries, plot_regions
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.pyplot as plt
 import matplotlib.colors
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
+
 # Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
 inf_path = os.path.join(data_path, 'Infrastructure')
 
 # Roads
 road_filename = os.path.join(inf_path, 'Roads', 'Tanroads_flow_shapefiles', 'tanroads_all_2017.shp')
 
-# Create figure
-plt.figure(figsize=(6, 7), dpi=150)
+output_filename = os.path.join(
+    figures_path,
+    'aadt_flow_map.png'
+)
 
+# Create figure
+ax = get_tz_axes()
 proj_lat_lon = ccrs.PlateCarree()
-ax = plt.axes([0.025, 0.025, 0.95, 0.93], projection=proj_lat_lon)
-x0 = 28.6
-x1 = 41.4
-y0 = 0.5
-y1 = -12.5
-ax.set_extent([x0, x1, y0, y1], crs=proj_lat_lon)
 
 # Background
-plot_countries(ax, data_path)
-plot_pop(plt, ax, data_path)
-
-plt.title('AADT flows in Tanzania')
+plot_basemap(ax, data_path)
+plot_basemap_labels(ax, data_path)
+scale_bar(ax, length=100, location=(0.925,0.02))
 
 aadt_and_geoms = []
 for record in shpreader.Reader(road_filename).records():
@@ -70,9 +70,4 @@ cbar = plt.colorbar(color_map, ax=ax, fraction=0.1, pad=0.01, drawedges=False, o
 cbar.outline.set_color("none")
 cbar.ax.set_xlabel('Vehicle counts')
 
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'aadt_flow_map.png'
-)
 plt.savefig(output_filename)
