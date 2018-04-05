@@ -9,6 +9,7 @@ per link, lowest return period (across any model) to which it is exposed
 """
 # pylint: disable=C0103
 import os
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -18,12 +19,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import LineString
 
-from utils import plot_pop, plot_countries, plot_regions
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
 def main():
-    # Input data
-    base_path = os.path.join(os.path.dirname(__file__), '..')
-    data_path = os.path.join(base_path, 'data')
+    config = load_config()
+    data_path = config['data_path']
+    figures_path = config['figures_path']
 
     states_filename = os.path.join(data_path, 'Infrastructure', 'Boundaries',
                                 'ne_10m_admin_0_countries_lakes.shp')
@@ -40,11 +42,6 @@ def main():
     exposure_filename = os.path.join(
         data_path, 'Analysis_results', 'tz_flood_stats_3.xlsx')
 
-    x0 = 28.6
-    x1 = 41.4
-    y0 = 0.5
-    y1 = -12.5
-    tz_extent = [x0, x1, y0, y1]
     proj_lat_lon = ccrs.PlateCarree()
 
     specs = [
@@ -136,13 +133,8 @@ def main():
                 if value > 0:
                     data.append((record.geometry, value))
 
-        plt.figure(figsize=(6, 6), dpi=150)
-        ax = plt.axes([0.025, 0.1, 0.95, 0.85], projection=proj_lat_lon)
-        ax.set_extent(tz_extent, crs=proj_lat_lon)
-
-        plot_countries(ax, data_path)
-        plot_pop(plt, ax, data_path)
-        plot_regions(ax, data_path)
+        ax = get_tz_axes()
+        plot_basemap(ax, data_path)
 
         if spec['val_col'] == 'model_frequency':
             cmap_name = 'YlOrRd'
@@ -155,9 +147,8 @@ def main():
         plot_color_map_network(ax, data, proj_lat_lon, spec['legend_label'], cmap_name, max_value)
 
         output_filename = os.path.join(
-            base_path, 'figures',
+            figures_path,
             spec['filename'])
-        plt.title(spec['title'])
         plt.savefig(output_filename)
         plt.close()
 
