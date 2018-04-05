@@ -3,27 +3,31 @@
 # pylint: disable=C0103
 import csv
 import os
-
-from utils import plot_pop, plot_countries, plot_regions
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-from matplotlib.transforms import Bbox, TransformedBbox
-from matplotlib.legend_handler import HandlerBase
-from matplotlib.image import BboxImage
-
 import numpy as np
 from osgeo import gdal
 import shapely.geometry
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
+
 # Input data
-base_path = os.path.join(os.path.dirname(__file__), '..')
-data_path = os.path.join(base_path, 'data')
+config = load_config()
+data_path = config['data_path']
+figures_path = config['figures_path']
 inf_path = os.path.join(data_path, 'Infrastructure')
-resource_path = os.path.join(base_path, 'resources')
+resource_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'resources')
+
+output_filename = os.path.join(
+    figures_path,
+    'multimodal_hazard_map.png'
+)
 
 states_filename = os.path.join(inf_path, 'Boundaries', 'ne_10m_admin_0_countries_lakes.shp')
 
@@ -69,12 +73,7 @@ zoom_extent = [38.3, 39.3, -4.8, -5.6]
 ax.set_extent(zoom_extent, crs=proj_lat_lon)
 
 # Background
-# Read in Tanzania outline
-for record in shpreader.Reader(states_filename).records():
-    country_code = record.attributes["ISO_A2"]
-    if country_code == "TZ":
-        tz_geom = record.geometry
-ax.add_geometries([tz_geom], crs=proj_lat_lon, edgecolor='#d7d7d7', facecolor='#fafafaee', zorder=0)
+plot_basemap(ax, data_path)
 
 # Major roads
 for record in shpreader.Reader(trunk_road_filename).records():
@@ -150,31 +149,6 @@ with open(airport_filename, 'r') as airports_file:
         )
         ax.imshow(plane_im, origin='upper', extent=img_extent, transform=proj_lat_lon, zorder=5)
 
-def get_data(filename):
-    """Read in data (as array) and extent of each raster
-    """
-    gdal.UseExceptions()
-    ds = gdal.Open(filename)
-    data = ds.ReadAsArray()
-    data[data < 0] = 0
-
-    gt = ds.GetGeoTransform()
-
-    # get the edge coordinates
-    width = ds.RasterXSize
-    height = ds.RasterYSize
-    xres = gt[1]
-    yres = gt[5]
-
-    xmin = gt[0]
-    xmax = gt[0] + (xres * width)
-    ymin = gt[3] + (yres * height)
-    ymax = gt[3]
-
-    lat_lon_extent = (xmin, xmax, ymax, ymin)
-
-    return data, lat_lon_extent
-
 data, lat_lon = get_data(hazard_filename)
 
 # Find global min/max to use for consistent color-mapping
@@ -193,33 +167,6 @@ cbar.outline.set_color("none")
 cbar.ax.set_xlabel('Flood depth (m)')
 
 # Legend
-class HandlerImage(HandlerBase):
-    """Use image in legend
-
-    Adapted from https://stackoverflow.com/questions/42155119/replace-matplotlib-legends-labels-with-image
-    """
-    def __init__(self, path, space=15, offset=5):
-        self.space = space
-        self.offset = offset
-        self.image_data = plt.imread(path)
-        super(HandlerImage, self).__init__()
-
-    def create_artists(self, legend, orig_handle,
-                       xdescent, ydescent, width, height, fontsize, trans):
-        scale = 1.5
-        bb = Bbox.from_bounds(
-            xdescent + self.offset,
-            ydescent,
-            height * self.image_data.shape[1] / self.image_data.shape[0] * scale,
-            height * scale)
-
-        tbb = TransformedBbox(bb, trans)
-        image = BboxImage(tbb)
-        image.set_data(self.image_data)
-
-        self.update_prop(image, orig_handle, legend)
-        return [image]
-
 boat_handle = mpatches.Patch()
 plane_handle = mpatches.Patch()
 major_road_handle = mpatches.Patch(color='#d1170a')
@@ -243,24 +190,11 @@ tz_extent = (28.6, 41.4, -0.1, -13.2)
 ax.set_extent(tz_extent, crs=proj_lat_lon)
 
 # Tanzania
-ax.add_geometries([tz_geom], crs=proj_lat_lon, edgecolor='white', facecolor='#d7d7d7')
-
-# Neighbours
-for record in shpreader.Reader(states_filename).records():
-    country_code = record.attributes['ISO_A2']
-    if country_code in ('BI', 'RW', 'CD', 'UG', 'KE', 'ZM', 'MW', 'MZ', 'SO'):
-        geom = record.geometry
-        ax.add_geometries([geom], crs=proj_lat_lon, edgecolor='white', facecolor='#efefef')
+plot_basemap(ax, data_path)
 
 # Zoom extent: (37.5, 39.5, -8.25, -6.25)
 x0, x1, y0, y1 = zoom_extent
 box = shapely.geometry.Polygon(((x0, y0), (x0, y1), (x1, y1), (x1, y0), (x0, y0)))
 ax.add_geometries([box], crs=proj_lat_lon, edgecolor='#000000', facecolor='#d7d7d700')
 
-
-output_filename = os.path.join(
-    base_path,
-    'figures',
-    'multimodal_hazard_map.png'
-)
 plt.savefig(output_filename)
