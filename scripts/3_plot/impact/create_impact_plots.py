@@ -5,6 +5,7 @@
 """
 # pylint: disable=C0103
 import os
+import sys
 
 import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
@@ -14,12 +15,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from shapely.geometry import LineString
 
-from utils import plot_pop, plot_countries, plot_regions
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
 def main():
     # Input data
-    base_path = os.path.join(os.path.dirname(__file__), '..')
-    data_path = os.path.join(base_path, 'data')
+    config = load_config()
+    data_path = config['data_path']
+    figures_path = config['figures_path']
 
     # Roads
     road_filename = os.path.join(
@@ -136,9 +139,7 @@ def main():
             ax.set_extent(tz_extent, crs=proj_lat_lon)
             ax.set_title(subtitle)
 
-            plot_countries(ax, data_path)
-            plot_pop(plt, ax, data_path)
-            plot_regions(ax, data_path)
+            plot_basemap(ax, data_path)
 
             # Set color_map
             colors = plt.get_cmap('cool')
@@ -216,9 +217,7 @@ def main():
         cbar.ax.set_ylabel('Return period (y)')
 
         plt.suptitle(spec['title'])
-        output_filename = os.path.join(
-            base_path, 'figures',
-            spec['filename'])
+        output_filename = os.path.join(figures_path, spec['filename'])
         plt.savefig(output_filename)
         plt.close()
 
