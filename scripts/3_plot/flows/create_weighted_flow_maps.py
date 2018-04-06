@@ -108,6 +108,9 @@ for scenario in ["current_own_range", "current", "future"]:
             print(scenario, column, sectors)
             ax = get_tz_axes()
             plot_basemap(ax, data_path)
+            plot_basemap_labels(ax, data_path)
+            scale_bar(ax, length=100, location=(0.925,0.02))
+
             plot_border_crossings(ax, nodes, resource_path, show_labels=False)
 
             if scenario == "current_own_range":
