@@ -104,6 +104,7 @@ def convert(threshold, infile, tmpfile_1, tmpfile_2, outfile):
     subprocess.run(["rm", tmpfile_2])
     subprocess.run(["rm", tmpfile_2.replace('shp', 'shx')])
     subprocess.run(["rm", tmpfile_2.replace('shp', 'dbf')])
+    subprocess.run(["rm", tmpfile_2.replace('shp', 'prj')])
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
