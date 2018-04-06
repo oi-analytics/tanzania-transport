@@ -1,5 +1,9 @@
 """Threshold hazard data and convert to vector polygons
 
+The key command that defines the threshold is an option to gdal_calc::
+
+    --calc=logical_and(A>={}, A<999)
+
 To run with GNU Parallel::
     seq 0.5 0.5 5 | parallel ./convert_hazard_to_vector.py {}
     seq 6 1 15 | parallel ./convert_hazard_to_vector.py {}
