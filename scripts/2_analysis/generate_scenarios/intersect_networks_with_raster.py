@@ -8,27 +8,38 @@ Output rows like:
 - rp
 - point_val
 """
+import csv
 import os
+import sys
 
 import fiona
 from rasterstats import zonal_stats
 
-def main():
-    # all output printed to STDOUT - start with CSV header
-    print(",".join([
-        'network_element',
-        'sector',
-        'id',
-        'model',
-        'return_period',
-        'flood_depth'
-    ]))
-    for network_details in get_network_details():
-        with fiona.open(network_details['path']) as network:
-            for hazard_details in get_hazard_details():
-                intersect_network(network, network_details, hazard_details)
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from scripts.utils import *
 
-def intersect_network(network, network_details, hazard_details):
+
+def main():
+    config = load_config()
+    out_path = os.path.join(
+        config['data_path'], 'analysis', 'network_intersections.csv'
+    )
+    with open(out_path, 'w', newline='') as out_fh:
+        writer = csv.writer(out_fh)
+        writer.writerow([
+            'network_element',
+            'sector',
+            'id',
+            'model',
+            'return_period',
+            'flood_depth'
+        ])
+        for network_details in get_network_details():
+            with fiona.open(network_details['path']) as network:
+                for hazard_details in get_hazard_details():
+                    intersect_network(network, network_details, hazard_details, writer)
+
+def intersect_network(network, network_details, hazard_details, writer):
     sector = network_details['sector']
     node_or_edge = network_details['node_or_edge']
     id_key = get_id_key_for_sector(sector)
@@ -37,31 +48,35 @@ def intersect_network(network, network_details, hazard_details):
     model = hazard_details['model']
     rp = hazard_details['r_period']
 
+    for record in network:
+        print(record)
+        break
+
     all_stats = zonal_stats(network, hazard_path, stats=['max'])
 
     for stats, element in zip(all_stats, network):
         if stats['max'] is not None and stats['max'] > 0 and stats['max'] < 999:
             el_id = element['properties'][id_key]
-            print(",".join([
+            writer.writerow([
                 node_or_edge,
                 sector,
                 str(el_id),
                 model,
                 str(int(rp)),
                 str(stats['max'])
-            ]))
+            ])
 
 def get_network_details():
-    base_path = os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', '..', 'data', 'Infrastructure'
+    config = load_config()
+    inf_path = os.path.join(
+        config['data_path'], 'Infrastructure'
     )
     return [
         {
             'sector': 'airport',
             'node_or_edge': 'node',
             'path': os.path.join(
-                base_path,
+                inf_path,
                 'Airports',
                 'airport_shapefiles',
                 'tz_od_airport_nodes.shp')
@@ -70,7 +85,7 @@ def get_network_details():
             'sector': 'port',
             'node_or_edge': 'node',
             'path': os.path.join(
-                base_path,
+                inf_path,
                 'Ports',
                 'port_shapefiles',
                 'tz_port_nodes.shp'),
@@ -79,7 +94,7 @@ def get_network_details():
             'sector': 'rail',
             'node_or_edge': 'node',
             'path': os.path.join(
-                base_path,
+                inf_path,
                 'Railways',
                 'railway_shapefiles',
                 'tanzania-rail-nodes-processed.shp'),
@@ -88,25 +103,16 @@ def get_network_details():
             'sector': 'rail',
             'node_or_edge': 'edge',
             'path': os.path.join(
-                base_path,
+                inf_path,
                 'Railways',
                 'railway_shapefiles',
                 'tanzania-rail-ways-processed.shp'),
         },
         {
             'sector': 'road',
-            'node_or_edge': 'node',
-            'path': os.path.join(
-                base_path,
-                'Roads',
-                'road_shapefiles',
-                'tanroads_nodes_main_all_2017_adj.shp'),
-        },
-        {
-            'sector': 'road',
             'node_or_edge': 'edge',
             'path': os.path.join(
-                base_path,
+                inf_path,
                 'Roads',
                 'road_shapefiles',
                 'tanroads_main_all_2017_adj.shp'),
@@ -116,9 +122,9 @@ def get_network_details():
 
 def get_hazard_details():
     details = []
-    base_path = os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', '..', 'data', 'tanzania_flood'
+    config = load_config()
+    hazard_path = os.path.join(
+        config['data_path'], 'tanzania_flood'
     )
     rps = [
         '00002',
@@ -132,7 +138,7 @@ def get_hazard_details():
     ]
     for rp in rps:
         path = os.path.join(
-            base_path,
+            hazard_path,
             'EUWATCH',
             "inun_dynRout_RP_{}_Tanzania".format(rp),
             "inun_dynRout_RP_{}_contour_Tanzania.tif".format(rp)
@@ -153,7 +159,7 @@ def get_hazard_details():
     for model in glofris_models:
         for rp in rps:
             path = os.path.join(
-                base_path,
+                hazard_path,
                 model,
                 'rcp6p0',
                 '2030-2069',
@@ -186,7 +192,7 @@ def get_hazard_details():
     for model, abbr in ssbn_models:
         for rp in ssbn_rps:
             path = os.path.join(
-                base_path,
+                hazard_path,
                 'SSBN_flood_data',
                 model,
                 "TZ-{}-{}-1.tif".format(abbr, rp)
@@ -201,13 +207,13 @@ def get_hazard_details():
 
 
 def get_id_key_for_sector(sector):
-    lu = {
-        'road': 'gid',
+    lookup = {
+        'road': 'link',
         'rail': 'id',
         'port': 'id',
         'airport': 'ident'
     }
-    return lu[sector]
+    return lookup[sector]
 
 if __name__ == '__main__':
     main()
